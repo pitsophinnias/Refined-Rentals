@@ -1,0 +1,140 @@
+/**
+ * mockRequests.js
+ * Demo data — replace with Supabase queries when backend is live.
+ *
+ * Extended request shape:
+ *  status:        "NEW" | "REVIEW" | "QUOTED" | "CLOSED"
+ *  quoted_at:     ISO string — when quote was sent (starts 7-day timer)
+ *  quote_data:    { items, declinedItems, grandTotal, note, channel, message } — saved quote
+ *  quote_pdf_url: Object URL of the generated PDF blob (session only)
+ *  closed_reason: "ACCEPTED" | "REJECTED" | null
+ *  closed_note:   string — admin note on closure
+ *  replied_at:    ISO string
+ *  reply_text:    string — human-readable summary shown in history
+ */
+
+export const MOCK_REQUESTS = [
+  {
+    id: "RR-001",
+    name: "Palesa Mokoena",
+    email: "palesa.mokoena@gmail.com",
+    phone: "+266 5812 3456",
+    event: "Wedding",
+    date: "2026-07-19",
+    location: "Maseru, Ha Abia",
+    services: ["Frame Tents", "Red Carpet", "Green Grass Carpet"],
+    other: "",
+    message: "We are expecting around 300 guests. Would need the tent set up by Friday evening and collected Sunday morning.",
+    status: "NEW",
+    submitted_at: "2026-06-05T09:14:00Z",
+    quoted_at: null, quote_data: null, quote_pdf_url: null,
+    closed_reason: null, closed_note: null,
+    replied_at: null, reply_text: null, notes: "",
+  },
+  {
+    id: "RR-002",
+    name: "Thabo Letsie",
+    email: "thabo.letsie@corporatels.co.ls",
+    phone: "+266 6334 7890",
+    event: "Corporate Gala",
+    date: "2026-06-28",
+    location: "Lesotho Sun, Maseru",
+    services: ["Frame Tents", "VIP Mobile Toilets"],
+    other: "We may also need a small stage platform — please advise if you can assist.",
+    message: "Annual company awards evening. Smart dress code. Need everything pristine.",
+    status: "REVIEW",
+    submitted_at: "2026-06-04T14:32:00Z",
+    quoted_at: null, quote_data: null, quote_pdf_url: null,
+    closed_reason: null, closed_note: null,
+    replied_at: null, reply_text: null,
+    notes: "Called client — confirmed 150 guests. Stage not available, advised accordingly.",
+  },
+  {
+    id: "RR-003",
+    name: "Mpho Ramakatsa",
+    email: "mpho.r@outlook.com",
+    phone: "+266 5799 0011",
+    event: "Birthday Party",
+    date: "2026-06-21",
+    location: "Teyateyaneng",
+    services: ["Red Carpet", "Green Grass Carpet"],
+    other: "",
+    message: "Outdoor garden party for 50 people. Would love a glamorous entrance setup.",
+    status: "QUOTED",
+    submitted_at: "2026-06-02T11:05:00Z",
+    quoted_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    quote_data: {
+      items: [
+        { id: "a1", description: "Red Carpet", qty: 1, unitPrice: "850", _isDelivery: false, _isOther: false, _declined: false },
+        { id: "a2", description: "Green Grass Carpet", qty: 1, unitPrice: "1200", _isDelivery: false, _isOther: false, _declined: false },
+        { id: "a3", description: "Delivery, Setup & Collection", qty: 1, unitPrice: "400", _isDelivery: true, _isOther: false, _declined: false },
+      ],
+      declinedItems: [],
+      grandTotal: 2450,
+      note: "",
+      channel: "email",
+      message: "Quote sent via Email. PDF attached.",
+    },
+    quote_pdf_url: null, // PDF blobs don't persist — admin can regenerate
+    closed_reason: null, closed_note: null,
+    replied_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    reply_text: "Quote sent via Email on 3 Jun 2026\n\n• Red Carpet: M850.00\n• Green Grass Carpet: M1,200.00\n• Delivery, Setup & Collection: M400.00\n\nTotal: M2,450.00",
+    notes: "Quote sent. Awaiting deposit confirmation.",
+  },
+  {
+    id: "RR-004",
+    name: "Lineo Sello",
+    email: "lineo.sello@gmail.com",
+    phone: "+266 5866 2233",
+    event: "Funeral Reception",
+    date: "2026-06-14",
+    location: "Mafeteng",
+    services: ["Frame Tents", "VIP Mobile Toilets"],
+    other: "",
+    message: "Family funeral. Need a large tent for about 200 people and clean toilet facilities. Urgently needed.",
+    status: "CLOSED",
+    submitted_at: "2026-06-01T07:45:00Z",
+    quoted_at: "2026-06-01T08:30:00Z",
+    quote_data: null, quote_pdf_url: null,
+    closed_reason: "ACCEPTED",
+    closed_note: "Client called to confirm. Deposit received.",
+    replied_at: "2026-06-01T08:30:00Z",
+    reply_text: "Quote sent via Phone Call on 1 Jun 2026\n\n• Frame Tents: M2,000.00\n• VIP Mobile Toilets: M800.00\n• Delivery, Setup & Collection: M500.00\n\nTotal: M3,300.00",
+    notes: "Booking confirmed and completed successfully.",
+  },
+  {
+    id: "RR-005",
+    name: "Retšelisitsoe Tau",
+    email: "retselisitsoe.tau@gmail.com",
+    phone: "+266 5701 5544",
+    event: "Graduation Celebration",
+    date: "2026-07-05",
+    location: "Roma, Maseru",
+    services: ["Frame Tents", "Red Carpet", "Green Grass Carpet", "VIP Mobile Toilets"],
+    other: "Sound system or PA hire — not sure if you do this.",
+    message: "Family graduation party at our home. Expecting about 80 guests. First time hiring — not sure what I need exactly, happy to take your advice.",
+    status: "NEW",
+    submitted_at: "2026-06-05T16:50:00Z",
+    quoted_at: null, quote_data: null, quote_pdf_url: null,
+    closed_reason: null, closed_note: null,
+    replied_at: null, reply_text: null, notes: "",
+  },
+  {
+    id: "RR-006",
+    name: "Katleho Nkosi",
+    email: "k.nkosi@businessmail.co.ls",
+    phone: "+266 6290 8877",
+    event: "Product Launch",
+    date: "2026-07-12",
+    location: "Maseru Mall Parking, Maseru",
+    services: ["Frame Tents", "Red Carpet"],
+    other: "",
+    message: "Outdoor product launch. Brand colours are red and white — the red carpet would be a great fit.",
+    status: "REVIEW",
+    submitted_at: "2026-06-04T10:10:00Z",
+    quoted_at: null, quote_data: null, quote_pdf_url: null,
+    closed_reason: null, closed_note: null,
+    replied_at: null, reply_text: null,
+    notes: "Confirmed venue allows external setups. Need to check tent size availability for that date.",
+  },
+];
