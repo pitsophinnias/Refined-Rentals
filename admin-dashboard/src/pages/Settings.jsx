@@ -5,9 +5,10 @@
  */
 
 import { useState } from "react";
-import { C, F } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 
-function SettingRow({ label, value, hint }) {
+function SettingRow({ label, value, hint, C }) {
   return (
     <div style={{ padding: "1rem 0", borderBottom: `1px solid ${C.border}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
@@ -21,9 +22,9 @@ function SettingRow({ label, value, hint }) {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, children, C }) {
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, marginBottom: 18 }}>
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, marginBottom: 18, transition: 'background 0.3s' }}>
       <div style={{ padding: "1.1rem 1.5rem", borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ fontFamily: F.display, fontSize: "1.1rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>{title}</h2>
       </div>
@@ -33,6 +34,8 @@ function Section({ title, children }) {
 }
 
 export default function Settings() {
+  const { C, F } = useTheme();
+
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifNew, setNotifNew]     = useState(true);
 
@@ -44,17 +47,17 @@ export default function Settings() {
       </div>
 
       {/* Business info */}
-      <Section title="Business Information">
-        <SettingRow label="Business Name"    value="Refined Rentals (PTY) LTD" />
-        <SettingRow label="Primary Phone"    value="+266 6363 0598" />
-        <SettingRow label="Secondary Phone"  value="+266 5885 8114" />
-        <SettingRow label="Email"            value="refinedrentals.lso@gmail.com" />
-        <SettingRow label="Facebook"         value="Refined Rentals" />
-        <SettingRow label="Coverage Area"    value="Lesotho-wide" />
+      <Section C={C} title="Business Information">
+        <SettingRow C={C} label="Business Name"    value="Refined Rentals (PTY) LTD" />
+        <SettingRow C={C} label="Primary Phone"    value="+266 6363 0598" />
+        <SettingRow C={C} label="Secondary Phone"  value="+266 5885 8114" />
+        <SettingRow C={C} label="Email"            value="refinedrentals.lso@gmail.com" />
+        <SettingRow C={C} label="Facebook"         value="Refined Rentals" />
+        <SettingRow C={C} label="Coverage Area"    value="Lesotho-wide" />
       </Section>
 
       {/* Email config */}
-      <Section title="Email Configuration">
+      <Section C={C} title="Email Configuration">
         <SettingRow
           label="Quote Reply From Address"
           value="refinedrentals.lso@gmail.com"
@@ -73,7 +76,7 @@ export default function Settings() {
       </Section>
 
       {/* Notifications */}
-      <Section title="Notifications">
+      <Section C={C} title="Notifications">
         {[
           { label: "Email on new request", hint: "Receive an email when a new quote comes in", state: notifEmail, set: setNotifEmail },
           { label: "Alert for new status only", hint: "Only notify on NEW requests, not updates", state: notifNew, set: setNotifNew },
@@ -107,10 +110,10 @@ export default function Settings() {
       </Section>
 
       {/* Backend status */}
-      <Section title="Backend Status">
-        <SettingRow label="Database"     value="⚠ Not connected — using demo data" hint="Connect Supabase to enable persistence" />
-        <SettingRow label="Auth"         value="⚠ Demo mode — hardcoded credentials" hint="Enable Supabase Auth for production" />
-        <SettingRow label="Email Sending" value="⚠ Simulated — no emails are sent yet" hint="Configure EmailJS or Resend" />
+      <Section C={C} title="Backend Status">
+        <SettingRow C={C} label="Database"     value="⚠ Not connected — using demo data" hint="Connect Supabase to enable persistence" />
+        <SettingRow C={C} label="Auth"         value="⚠ Demo mode — hardcoded credentials" hint="Enable Supabase Auth for production" />
+        <SettingRow C={C} label="Email Sending" value="⚠ Simulated — no emails are sent yet" hint="Configure EmailJS or Resend" />
         <div style={{ padding: "0.75rem 0" }}>
           <p style={{ margin: 0, fontSize: "0.82rem", color: C.textDim, fontFamily: F.body, fontWeight: 300, lineHeight: 1.65 }}>
             This dashboard is currently running in demo mode. All data resets on refresh. Connect Supabase using the project README to enable full persistence.
