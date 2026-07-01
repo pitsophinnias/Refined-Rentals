@@ -12,7 +12,8 @@
  */
 
 import { useState, useEffect } from "react";
-import { C, F, fmtDate, timeAgo } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import ReplyModal  from "../components/ReplyModal.jsx";
 
@@ -47,6 +48,8 @@ function useCountdown(isoStart) {
 
 /* ── InfoRow ── */
 function InfoRow({ label, value }) {
+  const { C, F } = useTheme();
+
   if (!value) return null;
   return (
     <div style={{ display:"flex", gap:16, padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
@@ -58,6 +61,8 @@ function InfoRow({ label, value }) {
 
 /* ── CloseModal — accept / reject closure ── */
 function CloseModal({ request, onClose, onConfirm }) {
+  const { C, F } = useTheme();
+
   const [reason,  setReason]  = useState(""); // "ACCEPTED" | "REJECTED"
   const [note,    setNote]    = useState("");
   const [saving,  setSaving]  = useState(false);
@@ -132,6 +137,8 @@ function CloseModal({ request, onClose, onConfirm }) {
 import { useRef } from "react";
 
 export default function RequestDetail({ request, onBack, onUpdate }) {
+  const { C, F } = useTheme();
+
   const [showReply, setShowReply]     = useState(false);
   const [showClose, setShowClose]     = useState(false);
   const [notes,     setNotes]         = useState(request.notes ?? "");
@@ -487,6 +494,8 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
 
 /* ── Card wrapper ── */
 function Card({ title, children }) {
+  const { C, F } = useTheme();
+
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:3 }}>
       <div style={{ padding:"1rem 1.5rem", borderBottom:`1px solid ${C.border}` }}>
@@ -497,4 +506,6 @@ function Card({ title, children }) {
   );
 }
 
-function SendIcon() { return <svg viewBox="0 0 16 16" fill="none" style={{width:14,height:14}}><path d="M2 8l12-6-6 12-2-4-4-2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>; }
+function SendIcon() {
+  const { C, F } = useTheme();
+ return <svg viewBox="0 0 16 16" fill="none" style={{width:14,height:14}}><path d="M2 8l12-6-6 12-2-4-4-2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>; }

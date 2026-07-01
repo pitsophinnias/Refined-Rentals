@@ -5,13 +5,16 @@
  */
 
 import { useState } from "react";
-import { C, F } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 
 // Hardcoded for demo — use Supabase Auth in production
 const ADMIN_EMAIL    = "admin@refinedrentals.co.ls";
 const ADMIN_PASSWORD = "RefinedAdmin2026";
 
 export default function Login({ onLogin }) {
+  const { C, F } = useTheme();
+
   const [email, setEmail]   = useState("");
   const [pass, setPass]     = useState("");
   const [error, setError]   = useState("");

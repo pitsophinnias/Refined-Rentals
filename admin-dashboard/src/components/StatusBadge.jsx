@@ -3,7 +3,8 @@
  * Pill badge for request status. Used in tables, cards, detail views.
  */
 
-import { statusToken, F } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, statusToken } from "../tokens.js";
 
 const STATUS_LABELS = {
   NEW:    "New",
@@ -13,7 +14,9 @@ const STATUS_LABELS = {
 };
 
 export default function StatusBadge({ status, size = "md" }) {
-  const tok = statusToken(status);
+  const { C, F } = useTheme();
+
+  const tok = statusToken(status, C);
   const isSmall = size === "sm";
 
   return (
