@@ -13,7 +13,8 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { C, F, fmtDate } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 
 /* ── helpers ── */
 const currency = (n) =>
@@ -111,7 +112,7 @@ async function generateQuotePDF(request, items, declinedItems, note) {
   /* deposit */
   doc.setFillColor(...BLUE); doc.rect(m,y,col,10,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("A 50% deposit is required to confirm your booking. Balance due on the day of the event.", m+4, y+6.5);
+  doc.text("Full payment is required no later than 48 hours before the event date.", m+4, y+6.5);
   y += 18;
 
   /* declined items */
@@ -160,6 +161,8 @@ async function generateQuotePDF(request, items, declinedItems, note) {
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════ */
 export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChange }) {
+  const { C, F } = useTheme();
+
   /* custom item state */
   const hasCustom = Boolean(request.other?.trim());
   const [customDecision,   setCustomDecision]   = useState(hasCustom ? "pending" : null);
@@ -192,7 +195,7 @@ export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChan
 
   /* respond panel */
   const [showRespond, setShowRespond] = useState(false);
-  const [channel,     setChannel]     = useState(null); // "email" | "whatsapp"
+  const [channels,    setChannels]    = useState({ email: false, whatsapp: false }); // both can be active
   const [sending,     setSending]     = useState(false);
 
   const overlayRef = useRef(null);
@@ -270,20 +273,19 @@ export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChan
     ? `\n\nPlease note: we are unable to provide "${declinedItems[0].description}". Reason: ${declinedItems[0].declineReason}. Full details are in the attached PDF.`
     : "";
 
-  const emailSubject = encodeURIComponent(`Your Quote from Refined Rentals — ${request.event}, ${fmtDate(request.date)}`);
+  const emailSubject = encodeURIComponent(`Your Quote from Refined Rentals — ${request.event}, ${fmtDate(request.date || request.startDate)}`);
   const emailBodyRaw =
 `Dear ${request.name.split(" ")[0]},
 
 Thank you for reaching out to Refined Rentals.
 
-Please find your quote attached (${filename}).
+Please find your quote attached to this message.
 
-Services quoted: ${activeItems.filter(i => !i._isDelivery && i.description.trim()).map(i => i.description).join(", ")}.
+We have reviewed your request and prepared a personalised quote for your ${request.event}. All details, including itemised pricing, are included in the attached PDF.
 
-Total: ${currency(grandTotal)}
-A 50% deposit (${currency(grandTotal/2)}) is required to confirm your booking.${declinedNote}
+Please note: full payment is required no later than 48 hours before the date of your event.${declinedNote}
 
-Please don't hesitate to call or WhatsApp us if you have any questions.
+Do not hesitate to contact us should you have any questions.
 
 Kind regards,
 Refined Rentals
@@ -292,17 +294,16 @@ Refined Rentals
   const waBodyRaw =
 `Hello ${request.name.split(" ")[0]},
 
-This is Refined Rentals. Thank you for your enquiry for your *${request.event}* on ${fmtDate(request.date)}.
+This is Refined Rentals. Thank you for your enquiry regarding your *${request.event}*.
 
-We have prepared your quote — please find the PDF attached.
+We have reviewed your request and prepared a quote for you. Please find the attached PDF for the full breakdown.
 
-*Summary:*
-${activeItems.filter(i=>i.description.trim()).map(i=>`• ${i.description}: ${currency((Number(i.qty)||1)*(Number(i.unitPrice)||0))}`).join("\n")}
+Please note that *full payment is required no later than 48 hours before the date of your event*.${declinedItems.length>0?`\n\n_Please note: we are unable to provide "${declinedItems[0].description}". Full details are in the attached PDF._`:""}
 
-*Total: ${currency(grandTotal)}*
-50% deposit to confirm: ${currency(grandTotal/2)}${declinedItems.length>0?`\n\n_Note: We are unable to provide "${declinedItems[0].description}". See PDF for details._`:""}
+Feel free to reply here or call us if you have any questions. 🙏
 
-Reply here with any questions. 🙏`;
+*Refined Rentals*
++266 6363 0598 / +266 5885 8114`;
 
   const waPhone = request.phone.replace(/\D/g,"");
 
@@ -314,8 +315,9 @@ Reply here with any questions. 🙏`;
       declinedItems,
       grandTotal,
       note,
-      channel,
-      message: channel === "email" ? emailBodyRaw : waBodyRaw,
+      channels,
+      messageEmail: emailBodyRaw,
+      messageWA: waBodyRaw,
     };
     setTimeout(() => {
       setSending(false);
@@ -522,48 +524,53 @@ Reply here with any questions. 🙏`;
             <div style={{animation:"rrFadeIn 0.2s ease"}}>
               <SectionHead num="3" label="Respond to Customer" />
 
-              {/* channel choice */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:"1.25rem"}}>
-                {[
-                  {id:"email",  icon:<EmailIcon/>, label:"Email",    sub:request.email},
-                  {id:"whatsapp",icon:<WAIcon/>,   label:"WhatsApp", sub:request.phone},
-                ].map(ch=>(
-                  <button key={ch.id} onClick={()=>setChannel(ch.id)} style={{background:channel===ch.id?C.blueDim:"rgba(255,255,255,0.03)",border:`1px solid ${channel===ch.id?C.blue:C.border}`,borderRadius:2,padding:"14px 10px",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
-                    <div style={{color:channel===ch.id?C.blue:C.textDim,marginBottom:6,display:"flex",justifyContent:"center"}}>{ch.icon}</div>
-                    <div style={{fontFamily:F.body,fontWeight:600,fontSize:"0.85rem",color:channel===ch.id?C.blue:C.textPrimary,marginBottom:3}}>{ch.label}</div>
-                    <div style={{fontFamily:F.body,fontSize:10,color:C.textDim,wordBreak:"break-all"}}>{ch.sub}</div>
-                  </button>
-                ))}
+              {/* channel choice — toggle both */}
+              <div style={{marginBottom:"1rem"}}>
+                <div style={{fontSize:9,letterSpacing:"0.18em",textTransform:"uppercase",color:C.textDim,fontFamily:F.body,marginBottom:8}}>Send via (select one or both)</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[
+                    {id:"email",    icon:<EmailIcon/>, label:"Email",    sub:request.email},
+                    {id:"whatsapp", icon:<WAIcon/>,    label:"WhatsApp", sub:request.phone},
+                  ].map(ch=>{
+                    const on = channels[ch.id];
+                    return (
+                      <button key={ch.id} onClick={()=>setChannels(c=>({...c,[ch.id]:!c[ch.id]}))} style={{background:on?C.blueDim:"rgba(255,255,255,0.03)",border:`1px solid ${on?C.blue:C.border}`,borderRadius:2,padding:"14px 10px",cursor:"pointer",textAlign:"center",transition:"all 0.2s",position:"relative"}}>
+                        {on&&<div style={{position:"absolute",top:8,right:8,width:16,height:16,borderRadius:"50%",background:C.blue,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:"#fff",fontSize:9,fontWeight:700}}>✓</span></div>}
+                        <div style={{color:on?C.blue:C.textDim,marginBottom:6,display:"flex",justifyContent:"center"}}>{ch.icon}</div>
+                        <div style={{fontFamily:F.body,fontWeight:600,fontSize:"0.85rem",color:on?C.blue:C.textPrimary,marginBottom:3}}>{ch.label}</div>
+                        <div style={{fontFamily:F.body,fontSize:10,color:C.textDim,wordBreak:"break-all"}}>{ch.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* message preview + launch */}
-              {channel&&(
-                <div style={{background:"rgba(255,255,255,0.02)",border:`1px solid ${C.border}`,borderRadius:2,padding:"1rem 1.25rem",marginBottom:"1.25rem",animation:"rrFadeIn 0.18s ease"}}>
-                  <div style={{fontSize:9,letterSpacing:"0.18em",textTransform:"uppercase",color:C.textDim,fontFamily:F.body,marginBottom:8}}>
-                    Message Preview
-                  </div>
-                  <pre style={{margin:"0 0 12px",color:C.textSecondary,fontSize:"0.8rem",fontFamily:F.body,fontWeight:300,lineHeight:1.7,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"rgba(0,0,0,0.2)",padding:"10px 12px",borderRadius:2,maxHeight:180,overflowY:"auto"}}>
-                    {channel==="email"?emailBodyRaw:waBodyRaw}
-                  </pre>
-                  <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-                    {channel==="email"&&(
-                      <a href={`mailto:${request.email}?subject=${emailSubject}&body=${encodeURIComponent(emailBodyRaw)}`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:7,background:"#2196c4",color:C.white,padding:"10px 18px",borderRadius:2,textDecoration:"none",fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body}}>
+              {/* message previews */}
+              {(channels.email||channels.whatsapp)&&(
+                <div style={{marginBottom:"1rem"}}>
+                  {channels.email&&(
+                    <div style={{marginBottom:10}}>
+                      <div style={{fontSize:9,letterSpacing:"0.14em",textTransform:"uppercase",color:"#2196c4",fontFamily:F.body,fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><EmailIcon/>Email preview</div>
+                      <pre style={{margin:"0 0 8px",color:C.textSecondary,fontSize:"0.78rem",fontFamily:F.body,fontWeight:300,lineHeight:1.7,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"rgba(0,0,0,0.2)",padding:"10px 12px",borderRadius:2,maxHeight:160,overflowY:"auto"}}>{emailBodyRaw}</pre>
+                      <a href={`mailto:${request.email}?subject=${emailSubject}&body=${encodeURIComponent(emailBodyRaw)}`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:7,background:"#2196c4",color:C.white,padding:"8px 16px",borderRadius:2,textDecoration:"none",fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body}}>
                         <EmailIcon/> Open Email Draft
                       </a>
-                    )}
-                    {channel==="whatsapp"&&(
-                      <a href={`https://wa.me/${waPhone}?text=${encodeURIComponent(waBodyRaw)}`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:7,background:"#25d366",color:C.white,padding:"10px 18px",borderRadius:2,textDecoration:"none",fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body}}>
+                    </div>
+                  )}
+                  {channels.whatsapp&&(
+                    <div style={{marginBottom:10}}>
+                      <div style={{fontSize:9,letterSpacing:"0.14em",textTransform:"uppercase",color:"#25d366",fontFamily:F.body,fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><WAIcon/>WhatsApp preview</div>
+                      <pre style={{margin:"0 0 8px",color:C.textSecondary,fontSize:"0.78rem",fontFamily:F.body,fontWeight:300,lineHeight:1.7,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"rgba(0,0,0,0.2)",padding:"10px 12px",borderRadius:2,maxHeight:160,overflowY:"auto"}}>{waBodyRaw}</pre>
+                      <a href={`https://wa.me/${waPhone}?text=${encodeURIComponent(waBodyRaw)}`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:7,background:"#25d366",color:C.white,padding:"8px 16px",borderRadius:2,textDecoration:"none",fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body}}>
                         <WAIcon/> Open WhatsApp
                       </a>
-                    )}
-                    <span style={{color:C.textDim,fontSize:11,fontFamily:F.body,fontWeight:300}}>
-                      ↑ Open, attach the PDF, then confirm below.
-                    </span>
-                  </div>
+                    </div>
+                  )}
+                  <p style={{margin:"8px 0 0",color:C.textDim,fontSize:11,fontFamily:F.body,fontWeight:300}}>Open each channel above, attach the PDF, send — then confirm below.</p>
                 </div>
               )}
 
-              {channel&&(
+              {(channels.email||channels.whatsapp)&&(
                 <div style={{display:"flex",justifyContent:"flex-end"}}>
                   <button onClick={handleSend} disabled={sending} style={{background:sending?"rgba(33,150,196,0.4)":C.blue,border:"none",color:C.white,cursor:sending?"wait":"pointer",padding:"12px 28px",borderRadius:2,fontSize:11,letterSpacing:"0.18em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body,transition:"background 0.25s",display:"flex",alignItems:"center",gap:8}}
                     onMouseEnter={e=>{if(!sending)e.currentTarget.style.background=C.blueLight;}}
@@ -589,6 +596,8 @@ Reply here with any questions. 🙏`;
 
 /* ── sub-components ── */
 function SectionHead({num,label}) {
+  const { C, F } = useTheme();
+
   return (
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:"0.9rem"}}>
       <div style={{width:22,height:22,borderRadius:"50%",background:C.blueDim,border:`1px solid ${C.borderBlue}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.blue,fontFamily:F.body,flexShrink:0}}>{num}</div>
@@ -602,9 +611,21 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 /* ── icons ── */
 const ic = {width:16,height:16};
-function PDFIcon()      {return <svg viewBox="0 0 16 16" fill="none" style={ic}><rect x="2" y="1" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;}
-function DownloadIcon() {return <svg viewBox="0 0 16 16" fill="none" style={ic}><path d="M8 2v8M5 7l3 3 3-3M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;}
-function EmailIcon()    {return <svg viewBox="0 0 16 16" fill="none" style={ic}><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 4l7 5 7-5" stroke="currentColor" strokeWidth="1.4"/></svg>;}
-function WAIcon()       {return <svg viewBox="0 0 16 16" fill="none" style={ic}><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5.5c.5 1 1 2 2 2.5s2 .5 2.5 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;}
-function SendIcon()     {return <svg viewBox="0 0 16 16" fill="none" style={ic}><path d="M2 8l12-6-6 12-2-4-4-2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>;}
-function Spinner()      {return <svg viewBox="0 0 16 16" fill="none" style={{...ic,animation:"rrSpin 0.8s linear infinite"}}><circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M8 2a6 6 0 016 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;}
+function PDFIcon()      {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={ic}><rect x="2" y="1" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;}
+function DownloadIcon() {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={ic}><path d="M8 2v8M5 7l3 3 3-3M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;}
+function EmailIcon()    {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={ic}><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M1 4l7 5 7-5" stroke="currentColor" strokeWidth="1.4"/></svg>;}
+function WAIcon()       {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={ic}><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5.5c.5 1 1 2 2 2.5s2 .5 2.5 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;}
+function SendIcon()     {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={ic}><path d="M2 8l12-6-6 12-2-4-4-2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>;}
+function Spinner()      {
+  const { C, F } = useTheme();
+return <svg viewBox="0 0 16 16" fill="none" style={{...ic,animation:"rrSpin 0.8s linear infinite"}}><circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/><path d="M8 2a6 6 0 016 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;}

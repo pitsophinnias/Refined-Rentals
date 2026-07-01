@@ -4,12 +4,15 @@
  */
 
 import { useState } from "react";
-import { C, F, fmtDate, timeAgo } from "../tokens.js";
+import { useTheme } from "../ThemeProvider.jsx";
+import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 
 const FILTERS = ["ALL", "NEW", "REVIEW", "QUOTED", "CLOSED"];
 
 export default function Requests({ requests, setSelectedId }) {
+  const { C, F } = useTheme();
+
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState("newest"); // newest | oldest | event_date
