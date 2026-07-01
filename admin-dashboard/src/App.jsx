@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { ThemeProvider, useTheme } from "./ThemeProvider.jsx";
 import { F } from "./tokens.js";
-import { MOCK_REQUESTS } from "./data/mockRequests.js";
+import { auth as authApi, requests as requestsApi, getToken, setToken, clearToken } from "./api.js";
 
 import Login          from "./pages/Login.jsx";
 import Dashboard      from "./pages/Dashboard.jsx";
@@ -73,14 +73,10 @@ function GlobalStyles({ C }) {
 
 function Shell() {
   const { C, isDark } = useTheme();
-  const [authed,     setAuthed]     = useState(() => { try { return localStorage.getItem("rr-admin-authed") === "true"; } catch { return false; } });
+  const [authed,     setAuthed]     = useState(() => !!getToken());
   const [page,       setPage]       = useState("dashboard");
-  const [requests,   setRequests]   = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_quote_requests") || "null");
-      return stored?.length ? stored : MOCK_REQUESTS;
-    } catch { return MOCK_REQUESTS; }
-  });
+  const [requests,   setRequests]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
   const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
@@ -90,27 +86,42 @@ function Shell() {
     document.head.appendChild(link);
   }, []);
 
-  // Sync requests from localStorage periodically
+  // Load + poll requests from API
   useEffect(() => {
-    const sync = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem("rr_quote_requests") || "null");
-        if (stored?.length) setRequests(stored);
-      } catch {}
-    };
-    const iv = setInterval(sync, 3000);
+    if (!authed) return;
+    const load = () =>
+      requestsApi.list()
+        .then(data => { setRequests(data.requests || []); setLoading(false); })
+        .catch(() => setLoading(false));
+    load();
+    const iv = setInterval(load, 15000); // refresh every 15s
     return () => clearInterval(iv);
-  }, []);
+  }, [authed]);
 
-  const updateRequest = (updated) => {
-    const next = requests.map(r => r.id === updated.id ? updated : r);
-    setRequests(next);
-    try { localStorage.setItem("rr_quote_requests", JSON.stringify(next)); } catch {}
+  const updateRequest = async (updated) => {
+    // Optimistic update
+    setRequests(prev => prev.map(r => r.id === updated.id ? updated : r));
+    try {
+      const data = await requestsApi.update(updated.id, {
+        status:         updated.status,
+        notes:          updated.notes,
+        quote_data:     updated.quote_data,
+        reply_channels: updated.reply_channels,
+        quoted_at:      updated.quoted_at,
+        closed_reason:  updated.closed_reason,
+        closed_note:    updated.closed_note,
+      });
+      // Sync with server response
+      setRequests(prev => prev.map(r => r.id === data.request.id ? data.request : r));
+    } catch (err) {
+      console.error("Update request failed:", err);
+    }
   };
 
   const handleSignOut = () => {
-    try { localStorage.removeItem("rr-admin-authed"); } catch {}
+    clearToken();
     setAuthed(false);
+    setRequests([]);
   };
 
   const handleSelectId = (id) => { setSelectedId(id); setPage("requests"); };
@@ -119,7 +130,7 @@ function Shell() {
   if (!authed) return (
     <>
       <GlobalStyles C={C} />
-      <Login onLogin={() => { try { localStorage.setItem("rr-admin-authed","true"); } catch {} setAuthed(true); }} />
+      <Login onLogin={(token) => { setToken(token); setAuthed(true); }} />
     </>
   );
 

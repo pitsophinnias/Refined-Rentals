@@ -160,18 +160,30 @@ async function generateQuotePDF(request, items, declinedItems, note) {
 /* ══════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════ */
-export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChange }) {
+export default function ReplyModal({ request, reviseReason, onClose, onQuoteSent, onStatusChange }) {
   const { C, F } = useTheme();
 
-  /* custom item state */
-  const hasCustom = Boolean(request.other?.trim());
+  /* Revision mode — pre-load prior quote items if reviseReason supplied */
+  const isRevision = Boolean(reviseReason);
+  const priorQuote = request.quote_data;
+
+  /* custom item state — skip decision flow on revision */
+  const hasCustom = !isRevision && Boolean(request.other?.trim());
   const [customDecision,   setCustomDecision]   = useState(hasCustom ? "pending" : null);
   const [declineReason,    setDeclineReason]    = useState("");
   const [showDeclineInput, setShowDeclineInput] = useState(false);
 
-  /* line items */
+  /* line items — pre-load from prior quote on revision */
   const buildInitialItems = () => {
-    const svc = request.services.map(s => ({
+    if (isRevision && priorQuote?.items?.length) {
+      // Clone prior items so prices and qtys are editable
+      return priorQuote.items.map(i => ({
+        ...i,
+        id: uid(), // fresh id for React keys
+        _declined: false, // all items start included in revision
+      }));
+    }
+    const svc = (request.services || []).map(s => ({
       id: uid(), description: s, qty: 1, unitPrice: "",
       _isDelivery: false, _isOther: false, _declined: false,
     }));
@@ -184,14 +196,15 @@ export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChan
   };
 
   const [items,    setItems]    = useState(buildInitialItems);
-  const [note,     setNote]     = useState("");
+  const [note,     setNote]     = useState(isRevision && priorQuote?.note ? priorQuote.note : "");
 
   /* PDF state */
-  const [pdfDoc,   setPdfDoc]   = useState(null); // jsPDF instance
-  const [pdfBlob,  setPdfBlob]  = useState(null);
-  const [pdfUrl,   setPdfUrl]   = useState(null); // object URL for viewing
-  const [pdfReady, setPdfReady] = useState(false);
-  const [building, setBuilding] = useState(false);
+  const [pdfDoc,    setPdfDoc]    = useState(null); // jsPDF instance
+  const [pdfBlob,   setPdfBlob]   = useState(null);
+  const [pdfUrl,    setPdfUrl]    = useState(null); // object URL for preview
+  const [pdfBase64, setPdfBase64] = useState(null); // permanent base64 for storage
+  const [pdfReady,  setPdfReady]  = useState(false);
+  const [building,  setBuilding]  = useState(false);
 
   /* respond panel */
   const [showRespond, setShowRespond] = useState(false);
@@ -250,9 +263,15 @@ export default function ReplyModal({ request, onClose, onQuoteSent, onStatusChan
   const handleBuildPDF = async () => {
     setBuilding(true);
     try {
-      const doc  = await generateQuotePDF(request, activeItems, declinedItems, note);
-      const blob = doc.output("blob");
-      const url  = URL.createObjectURL(blob);
+      const doc    = await generateQuotePDF(request, activeItems, declinedItems, note);
+      const blob   = doc.output("blob");
+      const url    = URL.createObjectURL(blob);
+      // Convert to base64 so it can be stored persistently in the database
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPdfBase64(reader.result); // full data URI: "data:application/pdf;base64,..."
+      };
+      reader.readAsDataURL(blob);
       setPdfDoc(doc); setPdfBlob(blob); setPdfUrl(url); setPdfReady(true);
     } catch(err) {
       console.error(err);
@@ -317,11 +336,14 @@ Feel free to reply here or call us if you have any questions. 🙏
       note,
       channels,
       messageEmail: emailBodyRaw,
-      messageWA: waBodyRaw,
+      messageWA:    waBodyRaw,
+      reviseReason: reviseReason || null,
+      pdfBase64:    pdfBase64 || null, // stored permanently in DB
     };
     setTimeout(() => {
       setSending(false);
-      onQuoteSent(quoteData, pdfUrl);
+      // Pass pdfBase64 as the "url" — RequestDetail stores it in quote_data
+      onQuoteSent(quoteData, pdfBase64 || pdfUrl);
     }, 600);
   };
 
@@ -441,6 +463,14 @@ Feel free to reply here or call us if you have any questions. 🙏
         <div style={{opacity:pendingDecision?0.35:1,pointerEvents:pendingDecision?"none":"auto",transition:"opacity 0.3s"}}>
 
           {/* STEP 1 — line items */}
+          {isRevision && (
+              <div style={{ marginBottom:"1rem", background:"rgba(232,160,32,0.08)", border:"1px solid rgba(232,160,32,0.25)", borderRadius:2, padding:"9px 14px" }}>
+                <div style={{ fontSize:8.5, letterSpacing:"0.14em", textTransform:"uppercase", color:"#e8a020", fontFamily:F.body, fontWeight:600, marginBottom:3 }}>Revising Quote</div>
+                <p style={{ margin:0, color:C.textSecondary, fontSize:"0.8rem", fontFamily:F.body, fontWeight:300, lineHeight:1.55 }}>
+                  <strong style={{ color:C.textPrimary, fontWeight:500 }}>Reason:</strong> {reviseReason}
+                </p>
+              </div>
+            )}
           <SectionHead num="1" label="Quote Line Items" />
           <div style={{display:"grid",gridTemplateColumns:"1fr 56px 100px 32px",gap:8,padding:"6px 0",marginBottom:4}}>
             {["Description","Qty","Unit Price (M)",""].map(h=>(
