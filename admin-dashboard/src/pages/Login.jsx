@@ -6,11 +6,7 @@
 
 import { useState } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
-import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
-
-// Hardcoded for demo — use Supabase Auth in production
-const ADMIN_EMAIL    = "admin@refinedrentals.co.ls";
-const ADMIN_PASSWORD = "RefinedAdmin2026";
+import { auth as authApi } from "../api.js";
 
 export default function Login({ onLogin }) {
   const { C, F } = useTheme();
@@ -21,19 +17,20 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    setTimeout(() => {
-      if (email === ADMIN_EMAIL && pass === ADMIN_PASSWORD) {
-        onLogin();
-      } else {
-        setError("Incorrect email or password. Please try again.");
-      }
+    try {
+      const data = await authApi.login(email, pass);
+      onLogin(data.token);
+    } catch (err) {
+      setError(err.message === "Invalid credentials"
+        ? "Incorrect email or password. Please try again."
+        : "Unable to connect to server. Make sure the backend is running.");
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   };
 
   const inputStyle = {
@@ -170,18 +167,7 @@ export default function Login({ onLogin }) {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div style={{
-            marginTop: "1.25rem", padding: "10px 12px",
-            background: C.blueDim, borderRadius: 2,
-            border: `1px solid ${C.borderBlue}`,
-          }}>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: C.textSecondary, fontFamily: F.body, fontWeight: 300, lineHeight: 1.6 }}>
-              <strong style={{ color: C.blue, fontWeight: 600 }}>Demo credentials</strong><br />
-              Email: admin@refinedrentals.co.ls<br />
-              Password: RefinedAdmin2026
-            </p>
-          </div>
+
         </div>
 
         <p style={{

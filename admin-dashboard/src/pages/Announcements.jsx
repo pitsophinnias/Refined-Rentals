@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
+import { announcements as annApi } from "../api.js";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -33,23 +34,10 @@ export default function Announcements() {
 
   /* Load */
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_announcements") || "[]");
-      // Auto-archive expired active items
-      const now = Date.now();
-      const updated = stored.map(a => {
-        if (a.active && new Date(a.endDate).getTime() < now) return { ...a, active: false };
-        return a;
-      });
-      setItems(updated);
-      save(updated, false);
-    } catch {}
+    annApi.list()
+      .then(data => setItems(data.announcements || []))
+      .catch(err => console.error("Announcements load error:", err));
   }, []);
-
-  const save = (next, update = true) => {
-    if (update) setItems(next);
-    try { localStorage.setItem("rr_announcements", JSON.stringify(next)); } catch {}
-  };
 
   /* Helpers */
   const now = Date.now();
@@ -57,7 +45,7 @@ export default function Announcements() {
   const archive = items.filter(a => !a.active);
 
   const msUntilExpiry = (endDate) => new Date(endDate).getTime() - now;
-  const isExpiringSoon = (a) => a.active && msUntilExpiry(a.endDate) < 24 * 3600 * 1000 && msUntilExpiry(a.endDate) > 0;
+  const isExpiringSoon = (a) => a.active && msUntilExpiry(a.end_date) < 24 * 3600 * 1000 && msUntilExpiry(a.end_date) > 0;
 
   const fmtCountdown = (ms) => {
     const h = Math.floor(ms / 3600000);
@@ -66,50 +54,71 @@ export default function Announcements() {
   };
 
   /* Create */
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.heading.trim() || !form.startDate || !form.endDate) {
       alert("Please fill in heading, start date, and end date.");
       return;
     }
-    const newItem = {
-      id: uid(),
-      ...form,
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    save([...items, newItem]);
-    setForm(EMPTY_FORM);
-    setShowForm(false);
+    try {
+      const data = await annApi.create({
+        heading:    form.heading,
+        content:    form.content,
+        image_url:  form.image || null,
+        start_date: form.startDate,
+        end_date:   form.endDate,
+      });
+      setItems(prev => [data.announcement, ...prev]);
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+    } catch (err) {
+      alert("Failed to create announcement: " + err.message);
+    }
   };
 
-  /* Remove → archive */
-  const removeItem = (id) => {
-    save(items.map(a => a.id === id ? { ...a, active: false } : a));
+  /* Remove → archive (set active=false via API) */
+  const removeItem = async (id) => {
+    try {
+      const data = await annApi.update(id, { active: false });
+      setItems(prev => prev.map(a => a.id === id ? data.announcement : a));
+    } catch (err) { alert("Failed to archive: " + err.message); }
   };
 
   /* Restore */
-  const handleRestore = (id) => {
+  const handleRestore = async (id) => {
     if (!restoreForm.startDate || !restoreForm.endDate) {
       alert("Please set a new start and end date to restore.");
       return;
     }
-    save(items.map(a => a.id === id ? { ...a, active: true, startDate: restoreForm.startDate, endDate: restoreForm.endDate } : a));
-    setRestoreId(null);
-    setRestoreForm({ startDate: "", endDate: "" });
-    setTab("active");
+    try {
+      const data = await annApi.update(id, {
+        active:     true,
+        start_date: restoreForm.startDate,
+        end_date:   restoreForm.endDate,
+      });
+      setItems(prev => prev.map(a => a.id === id ? data.announcement : a));
+      setRestoreId(null);
+      setRestoreForm({ startDate: "", endDate: "" });
+      setTab("active");
+    } catch (err) { alert("Failed to restore: " + err.message); }
   };
 
   /* Extend */
-  const handleExtend = (id) => {
+  const handleExtend = async (id) => {
     if (!extendDate) { alert("Please pick a new end date."); return; }
-    save(items.map(a => a.id === id ? { ...a, endDate: extendDate } : a));
-    setExtendId(null);
-    setExtendDate("");
+    try {
+      const data = await annApi.update(id, { end_date: extendDate });
+      setItems(prev => prev.map(a => a.id === id ? data.announcement : a));
+      setExtendId(null);
+      setExtendDate("");
+    } catch (err) { alert("Failed to extend: " + err.message); }
   };
 
   /* Let expire */
-  const handleLetExpire = (id) => {
-    save(items.map(a => a.id === id ? { ...a, active: false } : a));
+  const handleLetExpire = async (id) => {
+    try {
+      const data = await annApi.update(id, { active: false });
+      setItems(prev => prev.map(a => a.id === id ? data.announcement : a));
+    } catch (err) { alert("Failed to expire: " + err.message); }
   };
 
   /* Image upload */
@@ -228,7 +237,7 @@ export default function Announcements() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {displayed.map(item => {
             const expiring = isExpiringSoon(item);
-            const ms = msUntilExpiry(item.endDate);
+            const ms = msUntilExpiry(item.end_date);
 
             return (
               <div key={item.id}>
@@ -271,9 +280,9 @@ export default function Announcements() {
                       </div>
                       <p style={{ margin: "0 0 8px", color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, lineHeight: 1.6 }}>{item.content}</p>
                       <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body }}>
-                        {new Date(item.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(item.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                         {" — "}
-                        {new Date(item.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(item.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                       </div>
                     </div>
 

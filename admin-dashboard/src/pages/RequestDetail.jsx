@@ -158,15 +158,15 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
 
   const handleStatusChange = (s) => onUpdate({ ...request, status: s });
 
-  /* Called when admin opens the modal — set to REVIEW */
+  /* Called when admin opens the quote builder modal */
   const handleOpenModal = () => {
-    if (request.status === "NEW") onUpdate({ ...request, status: "REVIEW" });
     setShowReply(true);
+    // Status does NOT auto-change here — admin sets it manually via the stepper
   };
 
-  /* Called from ReplyModal when status should change (NEW→REVIEW on open) */
+  /* Called from ReplyModal — only used for QUOTED transition */
   const handleStatusFromModal = (s) => {
-    onUpdate({ ...request, status: s });
+    if (s === "QUOTED") onUpdate({ ...request, status: s });
   };
 
   /* Called when quote is fully sent */
@@ -202,6 +202,24 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
     onUpdate({ ...request, notes });
     setNotesSaved(true);
     setTimeout(() => setNotesSaved(false), 2000);
+  };
+
+  const [showReviseConfirm, setShowReviseConfirm] = useState(false);
+  const [reviseReason,      setReviseReason]      = useState("");
+
+  const handleReviseClick = () => {
+    if (hasQuote) {
+      setReviseReason("");
+      setShowReviseConfirm(true);
+    } else {
+      handleOpenModal();
+    }
+  };
+
+  const confirmRevise = () => {
+    if (!reviseReason.trim()) return;
+    setShowReviseConfirm(false);
+    handleOpenModal();
   };
 
   /* ── Derived ── */
@@ -267,7 +285,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
         <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
           {/* QUOTE REPLY button */}
           {!isClosed && (
-            <button onClick={handleOpenModal} style={{ background:C.blue, border:"none", color:C.white, cursor:"pointer", padding:"10px 22px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s", display:"flex", alignItems:"center", gap:7 }}
+            <button onClick={handleReviseClick} style={{ background:C.blue, border:"none", color:C.white, cursor:"pointer", padding:"10px 22px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s", display:"flex", alignItems:"center", gap:7 }}
               onMouseEnter={e=>e.currentTarget.style.background=C.blueLight}
               onMouseLeave={e=>e.currentTarget.style.background=C.blue}
             >
@@ -373,21 +391,92 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                 </div>
               </div>
 
-              {/* message sent */}
-              <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px", marginBottom:"0.75rem" }}>
-                <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body, marginBottom:6 }}>
-                  Message Sent via {request.quote_data.channel === "email" ? "Email" : "WhatsApp"}
+              {/* Messages sent — one block per channel used */}
+              {request.quote_data.channels && (
+                <div style={{ marginBottom:"0.9rem", display:"flex", flexDirection:"column", gap:10 }}>
+                  {request.quote_data.channels.email && (
+                    <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px" }}>
+                      <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"#2196c4", fontFamily:F.body, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
+                        <svg viewBox="0 0 14 14" fill="none" style={{width:11,height:11}}><rect x="1" y="2.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1 4l6 4 6-4" stroke="currentColor" strokeWidth="1.3"/></svg>
+                        Email Message Sent
+                      </div>
+                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
+                        {request.quote_data.messageEmail}
+                      </pre>
+                    </div>
+                  )}
+                  {request.quote_data.channels.whatsapp && (
+                    <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px" }}>
+                      <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"#25d366", fontFamily:F.body, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
+                        <svg viewBox="0 0 14 14" fill="none" style={{width:11,height:11}}><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 5C4.5 5 4.5 8.5 7 9.5 9.5 10.5 10 8 10 8L8.5 7.5 7.5 6.5 6.5 7.5C6 7 5.5 6 5.5 5.5L6.5 4.5 5.5 3.5 5 4.5Z" stroke="currentColor" strokeWidth="0.8"/></svg>
+                        WhatsApp Message Sent
+                      </div>
+                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
+                        {request.quote_data.messageWA}
+                      </pre>
+                    </div>
+                  )}
+                  {/* Legacy: single channel from old quote_data shape */}
+                  {!request.quote_data.channels && request.quote_data.message && (
+                    <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px" }}>
+                      <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body, marginBottom:6 }}>Message Sent</div>
+                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>{request.quote_data.message}</pre>
+                    </div>
+                  )}
                 </div>
-                <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:160, overflowY:"auto" }}>
-                  {request.quote_data.message}
-                </pre>
-              </div>
+              )}
 
-              {/* PDF note */}
-              <div style={{ display:"flex", alignItems:"center", gap:8, color:C.textDim, fontSize:11, fontFamily:F.body }}>
-                <svg viewBox="0 0 16 16" fill="none" style={{width:13,height:13}}><rect x="2" y="1" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                PDF can be regenerated by opening "Revise Quote" and re-generating without changes.
-              </div>
+              {/* PDF — reconstruct from base64 stored in quote_data or quote_pdf_url */}
+              {(() => {
+                // Prefer base64 stored inside quote_data (permanent), fall back to quote_pdf_url
+                const pdfSrc = request.quote_data?.pdfBase64 || request.quote_pdf_url || null;
+                if (!pdfSrc) return (
+                  <div style={{ display:"flex", alignItems:"center", gap:8, color:C.textDim, fontSize:11, fontFamily:F.body }}>
+                    <svg viewBox="0 0 16 16" fill="none" style={{width:13,height:13}}><rect x="2" y="1" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    No PDF stored. Revise and regenerate to save one.
+                  </div>
+                );
+                const openPdf = () => {
+                  const filename = `${request.name.replace(/\s+/g, "_")}-${(request.event || "Quote").replace(/\s+/g, "_")}.pdf`;
+                  let url;
+                  if (pdfSrc.startsWith("data:")) {
+                    const [, b64] = pdfSrc.split(",");
+                    const binary  = atob(b64);
+                    const bytes   = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    const blob = new Blob([bytes], { type: "application/pdf" });
+                    url = URL.createObjectURL(blob);
+                  } else {
+                    url = pdfSrc;
+                  }
+                  // Use an anchor with download attribute so the tab/filename is correct
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.target = "_blank";
+                  a.rel = "noreferrer";
+                  a.download = filename;
+                  a.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 60000);
+                };
+                return (
+                  <button onClick={openPdf}
+                    style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.blueDim, border:`1px solid ${C.borderBlue}`, borderRadius:2, padding:"8px 16px", cursor:"pointer", color:C.blue, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontFamily:F.body, fontWeight:600, transition:"background 0.2s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background="rgba(33,150,196,0.2)"}
+                    onMouseLeave={e=>e.currentTarget.style.background=C.blueDim}
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" style={{width:13,height:13}}><rect x="2" y="1" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    View PDF Quote
+                  </button>
+                );
+              })()}
+
+              {/* Revision reason — show if this quote was revised */}
+              {request.quote_data.reviseReason && (
+                <div style={{ marginTop:"0.75rem", background:"rgba(232,160,32,0.07)", border:"1px solid rgba(232,160,32,0.2)", borderRadius:2, padding:"8px 12px" }}>
+                  <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:"#e8a020", fontFamily:F.body, marginBottom:4 }}>Revision Reason</div>
+                  <p style={{ margin:0, color:C.textSecondary, fontSize:"0.82rem", fontFamily:F.body, fontWeight:300, lineHeight:1.6 }}>{request.quote_data.reviseReason}</p>
+                </div>
+              )}
             </Card>
           )}
 
@@ -415,20 +504,34 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           <Card title="Status">
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
               {STATUS_FLOW.map(s=>{
-                const active = request.status === s;
-                const idx    = STATUS_FLOW.indexOf(s);
-                const cur    = STATUS_FLOW.indexOf(request.status);
-                const past   = idx < cur;
+                const active    = request.status === s;
+                const idx       = STATUS_FLOW.indexOf(s);
+                const cur       = STATUS_FLOW.indexOf(request.status);
+                const past      = idx < cur;
+                // Only REVIEW is manually settable — and only when current status is NEW
+                const clickable = s === "REVIEW" && request.status === "NEW";
                 return (
-                  <button key={s} onClick={()=>handleStatusChange(s)} style={{ display:"flex", alignItems:"center", gap:10, background:active?C.blueDim:"transparent", border:`1px solid ${active?C.borderBlue:C.border}`, borderRadius:2, padding:"10px 14px", cursor:"pointer", textAlign:"left", width:"100%", transition:"all 0.2s" }}
-                    onMouseEnter={e=>{ if(!active){e.currentTarget.style.background="rgba(255,255,255,0.03)";e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";} }}
-                    onMouseLeave={e=>{ if(!active){e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=C.border;} }}
+                  <button
+                    key={s}
+                    onClick={() => clickable ? handleStatusChange("REVIEW") : undefined}
+                    style={{
+                      display:"flex", alignItems:"center", gap:10,
+                      background: active ? C.blueDim : "transparent",
+                      border: `1px solid ${active ? C.borderBlue : C.border}`,
+                      borderRadius:2, padding:"10px 14px",
+                      cursor: clickable ? "pointer" : "default",
+                      textAlign:"left", width:"100%", transition:"all 0.2s",
+                      opacity: !active && !past && !clickable ? 0.45 : 1,
+                    }}
+                    onMouseEnter={e=>{ if(clickable&&!active){ e.currentTarget.style.background="rgba(33,150,196,0.08)"; e.currentTarget.style.borderColor=C.blue; }}}
+                    onMouseLeave={e=>{ if(clickable&&!active){ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor=C.border; }}}
                   >
                     <div style={{ width:8, height:8, borderRadius:"50%", flexShrink:0, background:active?C.blue:past?"rgba(39,168,110,0.6)":C.border }}/>
                     <span style={{ fontFamily:F.body, fontSize:"0.85rem", color:active?C.blue:past?"rgba(255,255,255,0.4)":C.textSecondary, fontWeight:active?600:400 }}>
                       {s==="REVIEW"?"In Review":s.charAt(0)+s.slice(1).toLowerCase()}
                     </span>
                     {active&&<span style={{ marginLeft:"auto", fontSize:9, letterSpacing:"0.14em", textTransform:"uppercase", color:C.blue, fontFamily:F.body, fontWeight:600 }}>Current</span>}
+                    {clickable&&!active&&<span style={{ marginLeft:"auto", fontSize:9, letterSpacing:"0.12em", textTransform:"uppercase", color:C.blue, fontFamily:F.body, opacity:0.6 }}>Click to set</span>}
                   </button>
                 );
               })}
@@ -466,10 +569,41 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
         </div>
       </div>
 
+      {/* Revision reason modal */}
+      {showReviseConfirm && (
+        <div style={{ position:"fixed", inset:0, zIndex:250, background:"rgba(2,10,28,0.88)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem" }}>
+          <div style={{ background:C.surface, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:460, padding:"1.75rem" }}>
+            <div style={{ fontFamily:F.display, fontSize:"1.25rem", fontWeight:500, color:C.textPrimary, marginBottom:"0.5rem" }}>Revise Quote</div>
+            <p style={{ color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, lineHeight:1.65, margin:"0 0 1.25rem" }}>
+              Please provide a reason for revising this quote. This will be recorded alongside the updated quote.
+            </p>
+            <textarea
+              value={reviseReason}
+              onChange={e=>setReviseReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Customer requested removal of green grass carpet and reduction in tent size"
+              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px", color:C.textPrimary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, resize:"vertical", outline:"none", lineHeight:1.65, transition:"border-color 0.2s", marginBottom:"1rem" }}
+              onFocus={e=>e.target.style.borderColor=C.blue}
+              onBlur={e=>e.target.style.borderColor=C.border}
+              autoFocus
+            />
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setShowReviseConfirm(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:2, color:C.textSecondary, cursor:"pointer", padding:"9px 20px", fontFamily:F.body, fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", fontWeight:600 }}>Cancel</button>
+              <button
+                onClick={confirmRevise}
+                disabled={!reviseReason.trim()}
+                style={{ background:reviseReason.trim()?C.blue:"rgba(33,150,196,0.3)", border:"none", borderRadius:2, color:C.white, cursor:reviseReason.trim()?"pointer":"not-allowed", padding:"9px 20px", fontFamily:F.body, fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", fontWeight:600, transition:"background 0.2s" }}
+              >Continue to Quote Builder</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quote builder modal */}
       {showReply && (
         <ReplyModal
           request={request}
+          reviseReason={reviseReason}
           onClose={()=>setShowReply(false)}
           onQuoteSent={handleQuoteSent}
           onStatusChange={handleStatusFromModal}

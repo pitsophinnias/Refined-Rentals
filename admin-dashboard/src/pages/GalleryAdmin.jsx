@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
+import { gallery as galleryApi } from "../api.js";
 
 export default function GalleryAdmin() {
   const { C, F } = useTheme();
@@ -13,57 +14,68 @@ export default function GalleryAdmin() {
   const [dragging, setDragging] = useState(null); // index being dragged
   const [loading, setLoading] = useState(false);
 
-  // Load from localStorage
+  // Load from API
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_gallery") || "null");
-      if (stored) setItems(stored);
-    } catch {}
+    galleryApi.list()
+      .then(data => setItems(data.gallery || []))
+      .catch(err => console.error("Gallery load error:", err));
   }, []);
-
-  const save = (newItems) => {
-    setItems(newItems);
-    try { localStorage.setItem("rr_gallery", JSON.stringify(newItems)); } catch {}
-  };
 
   const handleFiles = async (files) => {
     setLoading(true);
-    const newItems = [...items];
     for (const file of Array.from(files)) {
-      const isVideo = file.type.startsWith("video/");
-      const src = await new Promise(res => {
-        const reader = new FileReader();
-        reader.onload = e => res(e.target.result);
-        reader.readAsDataURL(file);
-      });
-      newItems.push({ src, type: isVideo ? "video" : "image", label: file.name.replace(/\.[^.]+$/, ""), uploadedAt: new Date().toISOString() });
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("label", file.name.replace(/\.[^.]+$/, ""));
+        const data = await galleryApi.upload(formData);
+        setItems(prev => [...prev, data.item]);
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert(`Failed to upload ${file.name}: ${err.message}`);
+      }
     }
-    save(newItems);
     setLoading(false);
   };
 
-  const removeItem = (i) => {
-    const next = items.filter((_, idx) => idx !== i);
-    save(next);
+  const removeItem = async (i) => {
+    const item = items[i];
+    try {
+      await galleryApi.delete(item.id);
+      setItems(prev => prev.filter((_, idx) => idx !== i));
+    } catch (err) {
+      alert("Failed to delete item: " + err.message);
+    }
   };
 
-  const updateLabel = (i, label) => {
-    const next = items.map((it, idx) => idx === i ? { ...it, label } : it);
-    save(next);
+  const updateLabel = async (i, label) => {
+    const item = items[i];
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, label } : it));
+    try {
+      await galleryApi.updateLabel(item.id, label);
+    } catch (err) {
+      console.error("Label update error:", err);
+    }
   };
 
-  const moveUp = (i) => {
+  const moveUp = async (i) => {
     if (i === 0) return;
     const next = [...items];
     [next[i-1], next[i]] = [next[i], next[i-1]];
-    save(next);
+    setItems(next);
+    try {
+      await galleryApi.reorder(next.map((it, idx) => ({ id: it.id, sort_order: idx })));
+    } catch (err) { console.error("Reorder error:", err); }
   };
 
-  const moveDown = (i) => {
+  const moveDown = async (i) => {
     if (i === items.length - 1) return;
     const next = [...items];
     [next[i], next[i+1]] = [next[i+1], next[i]];
-    save(next);
+    setItems(next);
+    try {
+      await galleryApi.reorder(next.map((it, idx) => ({ id: it.id, sort_order: idx })));
+    } catch (err) { console.error("Reorder error:", err); }
   };
 
   const iStyle = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "8px 12px", color: C.textPrimary, fontSize: C.fontSize, fontFamily: F.body, outline: "none", transition: "border-color 0.2s", width: "100%", boxSizing: "border-box" };
@@ -115,9 +127,9 @@ export default function GalleryAdmin() {
               {/* Thumbnail */}
               <div style={{ width: 72, height: 52, borderRadius: 2, overflow: "hidden", flexShrink: 0, background: C.bg }}>
                 {item.type === "video" ? (
-                  <video src={item.src} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
+                  <video src={item.src || `http://localhost:3001${item.url}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
                 ) : (
-                  <img src={item.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={item.src || `http://localhost:3001${item.url}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 )}
               </div>
 

@@ -44,15 +44,16 @@ function EventCalendar({ requests, onSelectId, C }) {
 
   // Events this month
   const relevant = requests.filter(r => {
-    if (!r.date && !r.startDate) return false;
-    if (!["QUOTED","CLOSED"].includes(r.status) && r.status !== "REVIEW") return false;
-    const d = new Date(r.date || r.startDate);
+    if (!r.date && !r.start_date) return false;
+    // Exclude rejected closures; show everything else
+    if (r.status === "CLOSED" && r.closed_reason === "REJECTED") return false;
+    const d = new Date(r.date || r.start_date);
     return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
   });
 
   const eventsByDay = {};
   relevant.forEach(r => {
-    const d = new Date(r.date || r.startDate).getDate();
+    const d = new Date(r.date || r.start_date).getDate();
     if (!eventsByDay[d]) eventsByDay[d] = [];
     eventsByDay[d].push(r);
   });
@@ -77,7 +78,7 @@ function EventCalendar({ requests, onSelectId, C }) {
 
       {/* Legend */}
       <div style={{ padding: "0.5rem 1.25rem", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 16 }}>
-        {[["#1e9160", "Quoted / Accepted"], ["#2196c4", "In Review"]].map(([color, label]) => (
+        {[["#e8a020", "New"], ["#2196c4", "In Review"], ["#1e9160", "Quoted / Accepted"]].map(([color, label]) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
             <span style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body }}>{label}</span>
@@ -111,7 +112,7 @@ function EventCalendar({ requests, onSelectId, C }) {
                 <>
                   <div style={{ fontSize: C.fontSizeSm, fontWeight: isToday ? 700 : 400, color: isToday ? C.blue : C.textDim, fontFamily: F.body, marginBottom: 4 }}>{day}</div>
                   {events.slice(0, 2).map(r => {
-                    const color = r.status === "REVIEW" ? "#2196c4" : "#1e9160";
+                    const color = r.status === "NEW" ? "#e8a020" : r.status === "REVIEW" ? "#2196c4" : "#1e9160";
                     return (
                       <div key={r.id} onClick={() => onSelectId(r.id)} title={`${r.name} — ${r.event}`} style={{ background: color, borderRadius: 2, padding: "2px 5px", marginBottom: 2, cursor: "pointer", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontSize: 10, color: "#fff", fontFamily: F.body, fontWeight: 500 }}>
                         {r.name.split(" ")[0]}
@@ -191,6 +192,19 @@ export default function Dashboard({ requests, setPage, setSelectedId }) {
                   <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {r.event} · {r.services?.slice(0, 2).join(", ")}{r.services?.length > 2 ? ` +${r.services.length - 2}` : ""}
                   </div>
+                  {(r.date || r.start_date) && (
+                    <div style={{ fontSize: C.fontSizeSm - 1, color: C.blue, fontFamily: F.body, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                      <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10, flexShrink: 0 }}>
+                        <rect x="1" y="2" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                        <path d="M4 1v2M8 1v2M1 5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                      </svg>
+                      {r.duration === "multiple"
+                        ? `${new Date(r.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${new Date(r.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                        : new Date(r.date || r.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                      }
+                      {r.duration === "overnight" && <span style={{ opacity: 0.6 }}>(overnight)</span>}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
                   <StatusBadge status={r.status} size="sm" />
