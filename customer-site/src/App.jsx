@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { api } from "./api.js";
 
 /* ─── Design tokens ──────────────────────────────────────────── */
 const C = {
@@ -169,18 +170,26 @@ function SectionLabel({ text }) {
 }
 
 /* ─── Announcement Banner ────────────────────────────────────── */
-function AnnouncementBanner() {
-  const [announcements, setAnnouncements] = useState([]);
+function AnnouncementBanner({ dismissed, onDismiss, onActive }) {
   const [current, setCurrent] = useState(null);
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_announcements") || "[]");
-      const now = Date.now();
-      const active = stored.filter(a => a.active && new Date(a.startDate).getTime() <= now && new Date(a.endDate).getTime() >= now);
-      if (active.length > 0 && !dismissed) setCurrent(active[0]);
-    } catch(e) {}
+    if (dismissed) { setCurrent(null); return; }
+    api.getActiveAnnouncements()
+      .then(data => {
+        if (data.announcements?.length > 0) {
+          const a = data.announcements[0];
+          setCurrent({
+            heading:   a.heading,
+            content:   a.content,
+            image:     a.image_url || null,
+            startDate: a.start_date,
+            endDate:   a.end_date,
+          });
+          onActive?.();
+        }
+      })
+      .catch(() => {});
   }, [dismissed]);
 
   if (!current) return null;
@@ -203,7 +212,7 @@ function AnnouncementBanner() {
           <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{current.content}</div>
         </div>
       </div>
-      <button onClick={() => setDismissed(true)} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 2, color: C.white, cursor: "pointer", padding: "5px 14px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+      <button onClick={() => { onDismiss(); setCurrent(null); }} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 2, color: C.white, cursor: "pointer", padding: "5px 14px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
         Dismiss
       </button>
       <style>{`@keyframes slideDown { from { transform: translateY(-100%) } to { transform: translateY(0) } }`}</style>
@@ -212,17 +221,11 @@ function AnnouncementBanner() {
 }
 
 /* ─── Navigation ─────────────────────────────────────────────── */
-function Nav({ active, onQuote }) {
+function Nav({ active, onQuote, hasBanner }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [hasAnnouncement, setHasAnnouncement] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_announcements") || "[]");
-      const now = Date.now();
-      setHasAnnouncement(stored.some(a => a.active && new Date(a.startDate).getTime() <= now && new Date(a.endDate).getTime() >= now));
-    } catch(e) {}
     const fn = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", fn);
     return () => window.removeEventListener("scroll", fn);
@@ -240,7 +243,7 @@ function Nav({ active, onQuote }) {
     setMenuOpen(false);
   };
 
-  const topOffset = hasAnnouncement ? 48 : 0;
+  const topOffset = hasBanner ? 48 : 0;
 
   return (
     <nav id="rr-nav" style={{
@@ -427,12 +430,19 @@ function Gallery() {
   const posRef = useRef(0);
   const lastTRef = useRef(null);
 
-  // Load admin-uploaded media
+  // Load gallery from API; fall back to DEFAULT_SLIDES if API is unavailable
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("rr_gallery") || "null");
-      if (stored && stored.length > 0) setSlides(stored);
-    } catch(e) {}
+    api.getGallery()
+      .then(data => {
+        if (data.gallery?.length > 0) {
+          setSlides(data.gallery.map(item => ({
+            src:   `http://localhost:3001${item.url}`,
+            label: item.label || "",
+            type:  item.type,
+          })));
+        }
+      })
+      .catch(() => {}); // keep DEFAULT_SLIDES on failure
   }, []);
 
   // Card dimensions — varied widths for cinematic feel
@@ -699,21 +709,28 @@ function QuoteModal({ preselected, onClose, onSend }) {
   const handleSubmit = () => {
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) { alert("Please fill in your name, phone, and email."); return; }
     setSubmitting(true);
-    // Save to localStorage for admin to pick up
-    try {
-      const existing = JSON.parse(localStorage.getItem("rr_quote_requests") || "[]");
-      const newReq = {
-        id: `RR-${String(existing.length + 1).padStart(3,"0")}`,
-        ...form,
-        status: "NEW",
-        submitted_at: new Date().toISOString(),
-        quoted_at: null, quote_data: null, quote_pdf_url: null,
-        closed_reason: null, closed_note: null,
-        replied_at: null, reply_text: null, notes: "",
-      };
-      localStorage.setItem("rr_quote_requests", JSON.stringify([...existing, newReq]));
-    } catch(e) {}
-    setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 900);
+    api.submitRequest({
+      name:       form.name,
+      phone:      form.phone,
+      email:      form.email,
+      event:      form.event,
+      location:   form.location,
+      duration:   form.duration,
+      date:       form.date       || null,
+      startDate:  form.startDate  || null,
+      endDate:    form.endDate    || null,
+      services:   form.services,
+      tentSize:   form.tentSize   || null,
+      tentConfig: form.tentConfig || null,
+      other:      form.other      || null,
+      message:    form.message    || null,
+    })
+      .then(() => { setSubmitting(false); setSubmitted(true); })
+      .catch(err => {
+        setSubmitting(false);
+        alert("Something went wrong submitting your request. Please try again or call us directly.");
+        console.error("Submit error:", err);
+      });
   };
 
   const iSm = { width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: `1px solid rgba(41,171,226,0.2)`, borderRadius: 2, padding: "12px 14px", color: C.white, fontSize: "0.88rem", outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300, transition: "border-color 0.25s" };
@@ -864,6 +881,8 @@ function QuoteModal({ preselected, onClose, onSend }) {
 export default function App() {
   const [active, setActive] = useState("home");
   const [modal, setModal] = useState(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [hasBanner, setHasBanner] = useState(false);
   const openQuote = useCallback(s => setModal(s ?? ""), []);
   const closeQuote = useCallback(() => setModal(null), []);
 
@@ -892,8 +911,8 @@ export default function App() {
 
   return (
     <div style={{ margin: 0, padding: 0, width: "100%", overflowX: "hidden", background: C.navy }}>
-      <AnnouncementBanner />
-      <Nav active={active} onQuote={openQuote} />
+      <AnnouncementBanner dismissed={bannerDismissed} onDismiss={() => { setBannerDismissed(true); setHasBanner(false); }} onActive={() => setHasBanner(true)} />
+      <Nav active={active} onQuote={openQuote} hasBanner={hasBanner} />
       <Hero onQuote={openQuote} />
       <Services onQuote={openQuote} />
       <About onQuote={openQuote} />
