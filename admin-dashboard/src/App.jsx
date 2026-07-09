@@ -73,11 +73,19 @@ function GlobalStyles({ C }) {
 
 function Shell() {
   const { C, isDark } = useTheme();
-  const [authed,     setAuthed]     = useState(() => !!getToken());
+  const [authed,      setAuthed]     = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [page,       setPage]       = useState("dashboard");
   const [requests,   setRequests]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+
+  // Verify session cookie on mount
+  useEffect(() => {
+    authApi.me()
+      .then(() => { setAuthed(true); setAuthChecked(true); })
+      .catch(() => { setAuthed(false); setAuthChecked(true); });
+  }, []);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -118,7 +126,8 @@ function Shell() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try { await authApi.logout(); } catch {}
     clearToken();
     setAuthed(false);
     setRequests([]);
@@ -126,6 +135,9 @@ function Shell() {
 
   const handleSelectId = (id) => { setSelectedId(id); setPage("requests"); };
   const handleBack = () => setSelectedId(null);
+
+  // Don't render anything until we know the session state
+  if (!authChecked) return <GlobalStyles C={C} />;
 
   if (!authed) return (
     <>
