@@ -22,8 +22,9 @@ export const api = {
   submitRequest: (data) =>
     apiFetch("/requests", { method: "POST", body: JSON.stringify(data) }),
 
-  /* Gallery — public */
-  getGallery: () => apiFetch("/gallery"),
+  /* Gallery — public. category: "main" (homepage slideshow) or "contact" (contact grid) */
+  getGallery: (category) =>
+    apiFetch(`/gallery${category ? `?category=${category}` : ""}`),
 
   /* Announcements — public active only */
   getActiveAnnouncements: () => apiFetch("/announcements/active"),

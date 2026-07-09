@@ -45,11 +45,18 @@ const upload = multer({
 });
 
 /* ── GET /api/gallery ────────────────────────────────────────── */
+/* Optional ?category=main|contact filter. No param = all items. */
 router.get("/", async (req, res) => {
+  const { category } = req.query;
   try {
-    const { rows } = await pool.query(
-      "SELECT * FROM gallery ORDER BY sort_order ASC, uploaded_at ASC"
-    );
+    const { rows } = category
+      ? await pool.query(
+          "SELECT * FROM gallery WHERE category = $1 ORDER BY sort_order ASC, uploaded_at ASC",
+          [category]
+        )
+      : await pool.query(
+          "SELECT * FROM gallery ORDER BY sort_order ASC, uploaded_at ASC"
+        );
     res.json({ gallery: rows });
   } catch (err) {
     console.error("Gallery list error:", err);
@@ -62,20 +69,22 @@ router.post("/", requireAuth, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   const { label } = req.body;
+  const category  = req.body.category === "contact" ? "contact" : "main";
   const isVideo   = /mp4|mov|avi|webm/.test(path.extname(req.file.filename).slice(1));
   const type      = isVideo ? "video" : "image";
   const url       = `/uploads/gallery/${req.file.filename}`;
 
   try {
-    // Sort order = current max + 1
+    // Sort order = current max + 1, scoped to this category
     const { rows: maxRow } = await pool.query(
-      "SELECT COALESCE(MAX(sort_order), -1) AS max FROM gallery"
+      "SELECT COALESCE(MAX(sort_order), -1) AS max FROM gallery WHERE category = $1",
+      [category]
     );
     const sortOrder = maxRow[0].max + 1;
 
     const { rows } = await pool.query(
-      `INSERT INTO gallery (filename, original_name, label, type, url, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO gallery (filename, original_name, label, type, url, sort_order, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         req.file.filename,
@@ -84,6 +93,7 @@ router.post("/", requireAuth, upload.single("file"), async (req, res) => {
         type,
         url,
         sortOrder,
+        category,
       ]
     );
 
