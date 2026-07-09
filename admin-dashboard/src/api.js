@@ -80,7 +80,8 @@ export const requests = {
 
 /* ── Gallery ─────────────────────────────────────────────────── */
 export const gallery = {
-  list:    ()           => apiFetch("/gallery"),
+  list:    (category) =>
+    apiFetch(`/gallery${category ? `?category=${category}` : ""}`),
   upload:  (formData)   => apiFetchMultipart("/gallery", formData),
   updateLabel: (id, label) =>
     apiFetch(`/gallery/${id}`, { method: "PATCH", body: JSON.stringify({ label }) }),
