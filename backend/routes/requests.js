@@ -8,19 +8,32 @@
  * DELETE /api/requests/:id      — hard delete (admin)
  */
 
-const router     = require("express").Router();
-const { pool }   = require("../db.js");
+const router      = require("express").Router();
+const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 
 /* ── Helpers ─────────────────────────────────────────────────── */
+
+// Validate RR-### format to prevent path traversal / injection via ID
+function isValidId(id) {
+  return /^RR-\d{1,6}$/.test(id);
+}
+
 function nextId(existing) {
-  // Generate RR-001, RR-002 etc. based on highest existing id
   if (existing.length === 0) return "RR-001";
   const nums = existing
     .map(r => parseInt(r.id.replace("RR-", ""), 10))
     .filter(n => !isNaN(n));
   const next = Math.max(...nums) + 1;
   return `RR-${String(next).padStart(3, "0")}`;
+}
+
+// Strip any keys not in the allow-list from an object
+function pick(obj, keys) {
+  return keys.reduce((acc, k) => {
+    if (obj[k] !== undefined) acc[k] = obj[k];
+    return acc;
+  }, {});
 }
 
 /* ── POST /api/requests — customer submits quote ─────────────── */
@@ -32,12 +45,28 @@ router.post("/", async (req, res) => {
     other, message,
   } = req.body;
 
-  if (!name || !phone || !email) {
+  // Basic input validation
+  if (!name?.trim() || !phone?.trim() || !email?.trim()) {
     return res.status(400).json({ error: "Name, phone and email are required" });
   }
 
+  // Email format check
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+
+  // Duration must be one of the known values
+  const validDurations = ["single", "overnight", "multiple"];
+  if (duration && !validDurations.includes(duration)) {
+    return res.status(400).json({ error: "Invalid duration value" });
+  }
+
+  // services must be an array
+  if (services !== undefined && !Array.isArray(services)) {
+    return res.status(400).json({ error: "services must be an array" });
+  }
+
   try {
-    // Get next ID
     const { rows: existing } = await pool.query("SELECT id FROM quote_requests");
     const id = nextId(existing);
 
@@ -46,22 +75,24 @@ router.post("/", async (req, res) => {
          (id, name, phone, email, event, location,
           duration, date, start_date, end_date,
           services, tent_size, tent_config, other, message)
-       VALUES
-         ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
-        id, name, phone, email,
-        event || null,
-        location || null,
-        duration || "single",
-        date || null,
-        startDate || null,
-        endDate || null,
+        id,
+        name.trim(),
+        phone.trim(),
+        email.trim().toLowerCase(),
+        event?.trim()      || null,
+        location?.trim()   || null,
+        duration           || "single",
+        date               || null,
+        startDate          || null,
+        endDate            || null,
         JSON.stringify(services || []),
-        tentSize || null,
-        tentConfig || null,
-        other || null,
-        message || null,
+        tentSize           || null,
+        tentConfig         || null,
+        other?.trim()      || null,
+        message?.trim()    || null,
       ]
     );
 
@@ -76,8 +107,16 @@ router.post("/", async (req, res) => {
 router.get("/", requireAuth, async (req, res) => {
   const { status, search, sort = "submitted_at", order = "desc" } = req.query;
 
-  const safeSort  = ["submitted_at", "name", "status", "event"].includes(sort) ? sort : "submitted_at";
+  // Whitelist sort columns to prevent injection
+  const safeSort  = ["submitted_at", "name", "status", "event"].includes(sort)
+    ? sort : "submitted_at";
   const safeOrder = order === "asc" ? "ASC" : "DESC";
+
+  // Whitelist status values
+  const validStatuses = ["NEW", "REVIEW", "QUOTED", "CLOSED"];
+  if (status && !validStatuses.includes(status.toUpperCase())) {
+    return res.status(400).json({ error: "Invalid status filter" });
+  }
 
   const conditions = [];
   const values     = [];
@@ -88,7 +127,9 @@ router.get("/", requireAuth, async (req, res) => {
   }
 
   if (search) {
-    values.push(`%${search}%`);
+    // Trim and limit search length to prevent abuse
+    const q = search.trim().slice(0, 100);
+    values.push(`%${q}%`);
     const n = values.length;
     conditions.push(
       `(name ILIKE $${n} OR email ILIKE $${n} OR event ILIKE $${n} OR location ILIKE $${n})`
@@ -109,6 +150,9 @@ router.get("/", requireAuth, async (req, res) => {
 
 /* ── GET /api/requests/:id — single (admin) ─────────────────── */
 router.get("/:id", requireAuth, async (req, res) => {
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ error: "Invalid request ID format" });
+  }
   try {
     const { rows } = await pool.query(
       "SELECT * FROM quote_requests WHERE id = $1",
@@ -124,10 +168,20 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 /* ── PATCH /api/requests/:id — update (admin) ───────────────── */
 router.patch("/:id", requireAuth, async (req, res) => {
-  const allowed = [
-    "status", "notes", "quote_data", "reply_channels",
-    "quoted_at", "closed_reason", "closed_note",
-  ];
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ error: "Invalid request ID format" });
+  }
+
+  const allowed   = ["status", "notes", "quote_data", "reply_channels", "quoted_at", "closed_reason", "closed_note"];
+  const jsonbCols = ["quote_data", "reply_channels"];
+
+  // Whitelist status values
+  if (req.body.status !== undefined) {
+    const validStatuses = ["NEW", "REVIEW", "QUOTED", "CLOSED"];
+    if (!validStatuses.includes(req.body.status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+  }
 
   const updates = [];
   const values  = [];
@@ -136,8 +190,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const val = req.body[key];
     if (val === undefined) continue;
 
-    // Skip null for JSONB columns — leave existing DB value intact
-    const jsonbCols = ["quote_data", "reply_channels"];
+    // Skip null JSONB — leave existing DB value intact
     if (jsonbCols.includes(key) && val === null) continue;
 
     values.push(
@@ -171,8 +224,11 @@ router.patch("/:id", requireAuth, async (req, res) => {
   }
 });
 
-/* ── DELETE /api/requests/:id — hard delete (admin) ─────────── */
+/* ── DELETE /api/requests/:id (admin) ───────────────────────── */
 router.delete("/:id", requireAuth, async (req, res) => {
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ error: "Invalid request ID format" });
+  }
   try {
     const { rowCount } = await pool.query(
       "DELETE FROM quote_requests WHERE id = $1",
