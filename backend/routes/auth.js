@@ -1,12 +1,14 @@
 /**
  * routes/auth.js
- * POST /api/auth/login   — validate credentials, return JWT
+ *
+ * POST /api/auth/login   — validate credentials, return JWT in response body
+ * POST /api/auth/logout  — stateless, client discards token
  * GET  /api/auth/me      — verify token, return admin info
  */
 
-const router  = require("express").Router();
-const bcrypt  = require("bcrypt");
-const jwt     = require("jsonwebtoken");
+const router   = require("express").Router();
+const bcrypt   = require("bcrypt");
+const jwt      = require("jsonwebtoken");
 const { pool } = require("../db.js");
 require("dotenv").config();
 
@@ -14,7 +16,7 @@ require("dotenv").config();
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (!email?.trim() || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
@@ -24,21 +26,20 @@ router.post("/login", async (req, res) => {
       [email.trim().toLowerCase()]
     );
 
-    if (rows.length === 0) {
+    // Always run bcrypt even if user not found — prevents timing attacks
+    const dummyHash = "$2b$12$invalidhashfortimingprotectiononly000000000000000000000";
+    const hash      = rows[0]?.password_hash || dummyHash;
+    const match     = await bcrypt.compare(password, hash);
+
+    if (rows.length === 0 || !match) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const admin = rows[0];
-    const match = await bcrypt.compare(password, admin.password_hash);
-
-    if (!match) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
     const token = jwt.sign(
       { id: admin.id, email: admin.email },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
     res.json({
@@ -49,6 +50,11 @@ router.post("/login", async (req, res) => {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+/* ── Logout — stateless, client discards token ───────────────── */
+router.post("/logout", (req, res) => {
+  res.json({ message: "Logged out" });
 });
 
 /* ── Me ──────────────────────────────────────────────────────── */
