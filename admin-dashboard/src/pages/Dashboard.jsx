@@ -42,20 +42,35 @@ function EventCalendar({ requests, onSelectId, C }) {
   const startOffset = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
-  // Events this month
+  // Events that overlap this month (start before month ends, end after month starts)
+  const monthStart = new Date(viewYear, viewMonth, 1);
+  const monthEnd   = new Date(viewYear, viewMonth + 1, 0); // last day of month
+
   const relevant = requests.filter(r => {
     if (!r.date && !r.start_date) return false;
-    // Exclude rejected closures; show everything else
     if (r.status === "CLOSED" && r.closed_reason === "REJECTED") return false;
-    const d = new Date(r.date || r.start_date);
-    return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+    const evStart = new Date(r.date || r.start_date);
+    const evEnd   = r.duration === "multiple" && r.end_date ? new Date(r.end_date) : evStart;
+    // Include if the event overlaps at all with this month
+    return evStart <= monthEnd && evEnd >= monthStart;
   });
 
+  // Map each event to every day it occupies within this month
   const eventsByDay = {};
   relevant.forEach(r => {
-    const d = new Date(r.date || r.start_date).getDate();
-    if (!eventsByDay[d]) eventsByDay[d] = [];
-    eventsByDay[d].push(r);
+    const evStart    = new Date(r.date || r.start_date);
+    const evEnd      = r.duration === "multiple" && r.end_date ? new Date(r.end_date) : evStart;
+    // Clamp to this month
+    const clampStart = Math.max(evStart.getDate(), evStart.getMonth() === viewMonth && evStart.getFullYear() === viewYear ? evStart.getDate() : 1);
+    const clampEnd   = Math.min(evEnd.getDate(),   evEnd.getMonth()   === viewMonth && evEnd.getFullYear()   === viewYear ? evEnd.getDate()   : daysInMonth);
+    // Fill every day in range
+    for (let d = clampStart; d <= clampEnd; d++) {
+      if (!eventsByDay[d]) eventsByDay[d] = [];
+      // Tag each entry with its position in the span for styling
+      const isFirst = d === clampStart;
+      const isLast  = d === clampEnd;
+      eventsByDay[d].push({ ...r, _spanFirst: isFirst, _spanLast: isLast, _spanMid: !isFirst && !isLast });
+    }
   });
 
   const todayDate = today.getDate();
@@ -111,11 +126,33 @@ function EventCalendar({ requests, onSelectId, C }) {
               {valid && (
                 <>
                   <div style={{ fontSize: C.fontSizeSm, fontWeight: isToday ? 700 : 400, color: isToday ? C.blue : C.textDim, fontFamily: F.body, marginBottom: 4 }}>{day}</div>
-                  {events.slice(0, 2).map(r => {
+                  {events.slice(0, 2).map((r, ei) => {
                     const color = r.status === "NEW" ? "#e8a020" : r.status === "REVIEW" ? "#2196c4" : "#1e9160";
+                    // Spanning bar: remove radius on sides that continue to adjacent cells
+                    const borderRadius = r._spanMid
+                      ? "0"
+                      : r._spanFirst && !r._spanLast
+                      ? "2px 0 0 2px"
+                      : r._spanLast && !r._spanFirst
+                      ? "0 2px 2px 0"
+                      : "2px";
+                    // Extend bar to cell edge on continuation sides
+                    const marginLeft  = r._spanMid || r._spanLast  ? "-6px" : 0;
+                    const marginRight = r._spanMid || r._spanFirst && !r._spanLast ? "-7px" : 0;
                     return (
-                      <div key={r.id} onClick={() => onSelectId(r.id)} title={`${r.name} — ${r.event}`} style={{ background: color, borderRadius: 2, padding: "2px 5px", marginBottom: 2, cursor: "pointer", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontSize: 10, color: "#fff", fontFamily: F.body, fontWeight: 500 }}>
-                        {r.name.split(" ")[0]}
+                      <div key={`${r.id}-${ei}`} onClick={() => onSelectId(r.id)} title={`${r.name} — ${r.event}`}
+                        style={{
+                          background: color, borderRadius,
+                          padding: "2px 5px", marginBottom: 2,
+                          marginLeft, marginRight,
+                          cursor: "pointer",
+                          overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                          fontSize: 10, color: "#fff", fontFamily: F.body, fontWeight: 500,
+                        }}>
+                        {/* Only show name on first day of span */}
+                        {r._spanFirst || (!r._spanFirst && !r._spanMid && !r._spanLast)
+                          ? r.name.split(" ")[0]
+                          : " " /* non-breaking space to keep bar height */}
                       </div>
                     );
                   })}
@@ -190,7 +227,7 @@ export default function Dashboard({ requests, setPage, setSelectedId }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: F.body, fontSize: C.fontSize, fontWeight: 500, color: C.textPrimary, marginBottom: 2 }}>{r.name}</div>
                   <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {r.event} · {r.services?.slice(0, 2).join(", ")}{r.services?.length > 2 ? ` +${r.services.length - 2}` : ""}
+                    {r.event} · {r.services?.slice(0, 2).map(s => typeof s === "object" ? s.name : s).join(", ")}{r.services?.length > 2 ? ` +${r.services.length - 2}` : ""}
                   </div>
                   {(r.date || r.start_date) && (
                     <div style={{ fontSize: C.fontSizeSm - 1, color: C.blue, fontFamily: F.body, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>

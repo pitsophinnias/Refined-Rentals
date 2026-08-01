@@ -19,7 +19,7 @@ export function clearToken() {
 }
 
 /* ── Core fetch ──────────────────────────────────────────────── */
-async function apiFetch(path, opts = {}, authenticated = true) {
+async function apiFetch(path, opts = {}, authenticated = true, silentAuth = false) {
   const headers = { "Content-Type": "application/json" };
 
   if (authenticated) {
@@ -33,9 +33,20 @@ async function apiFetch(path, opts = {}, authenticated = true) {
   });
 
   if (res.status === 401) {
-    clearToken();
-    window.location.reload();
-    return;
+    // silentAuth = true means "just tell me I'm not logged in, don't reload"
+    // Used for /me checks on mount so we don't get into a reload loop
+    if (!silentAuth) {
+      clearToken();
+      window.location.reload();
+      return;
+    }
+    const err = await res.json().catch(() => ({ error: "Unauthorized" }));
+    throw new Error(err.error || "Unauthorized");
+  }
+
+  if (res.status === 429) {
+    const err = await res.json().catch(() => ({ error: "Too many requests" }));
+    throw new Error(err.error || "Too many requests");
   }
 
   if (!res.ok) {
@@ -75,7 +86,7 @@ export const auth = {
     apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }, false),
   logout: () =>
     apiFetch("/auth/logout", { method: "POST" }),
-  me:     () => apiFetch("/auth/me"),
+  me:     () => apiFetch("/auth/me", {}, true, true), // silent — 401 throws, no reload
 };
 
 /* ── Quote requests ──────────────────────────────────────────── */

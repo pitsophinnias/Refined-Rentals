@@ -88,3 +88,48 @@ async function initDB() {
 }
 
 module.exports = { pool, initDB };
+
+/* ── Additional tables (added for Settings) ──────────────────── */
+const SETTINGS_SCHEMA = `
+  -- Roles: ADMIN (full access) | VIEWER (read-only)
+  CREATE TABLE IF NOT EXISTS admin_roles (
+    id         SERIAL PRIMARY KEY,
+    admin_id   INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    role       VARCHAR(20) NOT NULL DEFAULT 'VIEWER',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(admin_id)
+  );
+
+  -- Notification emails — extra addresses to CC on new quote alerts
+  CREATE TABLE IF NOT EXISTS notification_emails (
+    id         SERIAL PRIMARY KEY,
+    email      VARCHAR(255) UNIQUE NOT NULL,
+    label      TEXT,
+    active     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  -- Audit log — every significant admin action
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id          SERIAL PRIMARY KEY,
+    admin_id    INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    admin_email TEXT,
+    action      TEXT NOT NULL,
+    entity      TEXT,
+    entity_id   TEXT,
+    detail      TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`;
+
+async function initSettingsDB() {
+  try {
+    await pool.query(SETTINGS_SCHEMA);
+    console.log("✓ Settings schema ready");
+  } catch (err) {
+    console.error("✗ Settings schema init failed:", err.message);
+  }
+}
+
+// Export alongside existing
+module.exports.initSettingsDB = initSettingsDB;
