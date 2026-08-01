@@ -63,9 +63,22 @@ async function generateQuotePDF(request, items, declinedItems, note) {
   doc.text("EVENT DETAILS", rx, y+8);
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...BLACK);
   doc.text(`Type:      ${request.event}`, rx, y+16);
-  doc.text(`Date:      ${fmtDate(request.date)}`, rx, y+23);
-  doc.text(`Location:  ${request.location}`, rx, y+30);
-  y += 46;
+  // Date — handle single, overnight, and multiple-day events
+  const eventDateStr =
+    request.duration === "multiple"
+      ? `${fmtDate(request.start_date)} – ${fmtDate(request.end_date)}`
+      : fmtDate(request.date || request.start_date);
+  doc.text(`Date:      ${eventDateStr}`, rx, y+23);
+  doc.text(`Location:  ${request.location || ""}`, rx, y+30);
+  let ey = 37;
+  // Tent size and config if provided
+  if (request.tent_size) {
+    const sizeLabel = request.tent_size === "9x9" ? "9 × 9m" : request.tent_size === "9x12" ? "9 × 12m" : request.tent_size === "9x15" ? "9 × 15m" : request.tent_size;
+    const cfgLabel  = request.tent_config === "cinema" ? "Cinema / Chairs Only" : request.tent_config === "tables" ? "With Round Tables" : (request.tent_config || "");
+    doc.text(`Tent:      ${sizeLabel}${cfgLabel ? " · " + cfgLabel : ""}`, rx, y+ey);
+    ey += 7;
+  }
+  y += ey + 9;
 
   /* table header */
   doc.setFillColor(...NAVY); doc.rect(m,y,col,9,"F");
@@ -82,14 +95,21 @@ async function generateQuotePDF(request, items, declinedItems, note) {
   activeRows.forEach((item,idx) => {
     const lineTotal = (Number(item.qty)||1)*(Number(item.unitPrice)||0);
     grand += lineTotal;
-    if (idx%2===0) { doc.setFillColor(250,251,253); doc.rect(m,y,col,9,"F"); }
-    doc.setDrawColor(220,225,235); doc.setLineWidth(0.2); doc.line(m,y+9,m+col,y+9);
+    const rowH = item.subtitle ? 14 : 9; // taller row if subtitle present
+    if (idx%2===0) { doc.setFillColor(250,251,253); doc.rect(m,y,col,rowH,"F"); }
+    doc.setDrawColor(220,225,235); doc.setLineWidth(0.2); doc.line(m,y+rowH,m+col,y+rowH);
     doc.setTextColor(...BLACK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
     doc.text(doc.splitTextToSize(item.description, dW-6)[0], m+4, y+6);
+    // Subtitle (e.g. tent config) printed smaller below description
+    if (item.subtitle) {
+      doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(130,145,165);
+      doc.text(item.subtitle, m+4, y+11.5);
+      doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...BLACK);
+    }
     doc.text(String(item.qty||1), m+dW+4, y+6);
     doc.text(`M ${Number(item.unitPrice||0).toFixed(2)}`, m+dW+qW, y+6);
     doc.text(`M ${lineTotal.toFixed(2)}`, pw-m-4, y+6, {align:"right"});
-    y += 9;
+    y += rowH;
   });
   y += 4;
 
@@ -183,13 +203,25 @@ export default function ReplyModal({ request, reviseReason, onClose, onQuoteSent
         _declined: false, // all items start included in revision
       }));
     }
-    const svc = (request.services || []).map(s => ({
-      id: uid(), description: s, qty: 1, unitPrice: "",
-      _isDelivery: false, _isOther: false, _declined: false,
-    }));
+    const tentSizeLabel = request.tent_size === "9x9" ? "9 × 9m" : request.tent_size === "9x12" ? "9 × 12m" : request.tent_size === "9x15" ? "9 × 15m" : (request.tent_size || "");
+    const tentCfgLabel  = request.tent_config === "cinema" ? "Cinema / Chairs Only" : request.tent_config === "tables" ? "With Round Tables" : (request.tent_config || "");
+    const tentSubtitle  = (tentSizeLabel || tentCfgLabel) ? `${tentSizeLabel}${tentCfgLabel ? " · " + tentCfgLabel : ""}` : "";
+
+    // services can be [{name, qty}] (new shape) or ["string"] (legacy)
+    const svc = (request.services || []).map(s => {
+      const name = typeof s === "object" ? s.name : s;
+      const qty  = typeof s === "object" && s.qty ? s.qty : 1;
+      return {
+        id: uid(), description: name, qty,
+        unitPrice: "",
+        subtitle: name === "Frame Tents" && tentSubtitle ? tentSubtitle : "",
+        _isDelivery: false, _isOther: false, _declined: false,
+      };
+    });
     const other = hasCustom ? [{
-      id: uid(), description: request.other, qty: 1, unitPrice: "",
+      id: uid(), description: "", qty: 1, unitPrice: "",
       _isDelivery: false, _isOther: true, _declined: false,
+      _customerText: request.other, // keep original for reference — not used as description
     }] : [];
     const del = [{ id: uid(), description: "Delivery, Setup & Collection", qty: 1, unitPrice: "", _isDelivery: true, _isOther: false, _declined: false }];
     return [...svc, ...other, ...del];
@@ -378,7 +410,14 @@ Feel free to reply here or call us if you have any questions. 🙏
         <div style={{marginBottom:"1.75rem",paddingRight:36}}>
           <div style={{fontSize:9,letterSpacing:"0.22em",textTransform:"uppercase",color:C.blue,fontFamily:F.body,fontWeight:600,marginBottom:6}}>Quote Builder</div>
           <h3 style={{fontFamily:F.display,fontSize:"1.6rem",fontWeight:500,color:C.textPrimary,margin:"0 0 0.25rem"}}>Build Quote for {request.name}</h3>
-          <p style={{margin:0,color:C.textSecondary,fontSize:"0.82rem",fontFamily:F.body,fontWeight:300}}>{request.event} · {fmtDate(request.date)} · {request.location}</p>
+          <p style={{margin:0,color:C.textSecondary,fontSize:"0.82rem",fontFamily:F.body,fontWeight:300}}>
+            {request.event} ·{" "}
+            {request.duration === "multiple"
+              ? `${fmtDate(request.start_date)} – ${fmtDate(request.end_date)}`
+              : fmtDate(request.date || request.start_date)}
+            {request.location ? ` · ${request.location}` : ""}
+            {request.tent_size ? ` · ${request.tent_size === "9x9" ? "9×9m" : request.tent_size === "9x12" ? "9×12m" : "9×15m"}${request.tent_config === "cinema" ? " (Cinema)" : request.tent_config === "tables" ? " (Round Tables)" : ""}` : ""}
+          </p>
         </div>
 
         {/* ── Custom item decision banner ── */}
@@ -407,9 +446,9 @@ Feel free to reply here or call us if you have any questions. 🙏
             </div>
             {/* banner body */}
             <div style={{padding:"12px 14px"}}>
-              <div style={{fontSize:"0.88rem",fontFamily:F.body,fontWeight:400,color:C.textPrimary,marginBottom:10,lineHeight:1.5}}>
-                <span style={{color:C.textDim,fontSize:11,marginRight:6}}>Customer requested:</span>
-                "{request.other}"
+              <div style={{fontSize:"0.85rem",fontFamily:F.body,fontWeight:300,color:C.textSecondary,marginBottom:10,lineHeight:1.6,background:"rgba(255,255,255,0.04)",borderRadius:2,padding:"8px 12px",borderLeft:`3px solid ${C.border}`}}>
+                <span style={{color:C.textDim,fontSize:10,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:600,display:"block",marginBottom:4}}>Customer wrote:</span>
+                {request.other}
               </div>
               {customDecision==="pending"&&!showDeclineInput&&(
                 <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
@@ -437,7 +476,16 @@ Feel free to reply here or call us if you have any questions. 🙏
                   </div>
                 </div>
               )}
-              {customDecision==="included"&&<p style={{margin:0,color:"#27a86e",fontSize:"0.83rem",fontFamily:F.body,fontWeight:300}}>Added to line items below. Fill in the unit price to include it in the total.</p>}
+              {customDecision==="included" && (
+                <div>
+                  <p style={{margin:"0 0 8px",color:"#27a86e",fontSize:"0.83rem",fontFamily:F.body,fontWeight:300}}>
+                    Item added below. <strong style={{fontWeight:600}}>Enter a clean item name</strong> in the description field — the customer's original wording will not appear on the quote.
+                  </p>
+                  <div style={{fontSize:"0.78rem",color:C.textDim,fontFamily:F.body,fontWeight:300,fontStyle:"italic",lineHeight:1.5}}>
+                    Customer wrote: "{request.other}"
+                  </div>
+                </div>
+              )}
               {customDecision==="declined"&&(
                 <div>
                   <p style={{margin:"0 0 6px",color:C.textSecondary,fontSize:"0.83rem",fontFamily:F.body,fontWeight:300}}>Removed from quote. The reason will appear on the PDF.</p>
@@ -480,17 +528,25 @@ Feel free to reply here or call us if you have any questions. 🙏
 
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
             {activeItems.map(item=>(
-              <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 56px 100px 32px",gap:8,alignItems:"center",background:item._isOther?"rgba(39,168,110,0.05)":"transparent",borderRadius:item._isOther?2:0,padding:item._isOther?"4px 6px":"0",border:item._isOther?"1px solid rgba(39,168,110,0.2)":"none"}}>
+              <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 56px 100px 32px",gap:8,alignItems:"start",background:item._isOther?"rgba(39,168,110,0.05)":"transparent",borderRadius:item._isOther?2:0,padding:item._isOther?"4px 6px":"0",border:item._isOther?"1px solid rgba(39,168,110,0.2)":"none"}}>
+                {/* Description + optional subtitle */}
                 <div style={{position:"relative"}}>
-                  <input type="text" value={item.description} onChange={e=>updateItem(item.id,"description",e.target.value)} placeholder="Item description" onFocus={fi} onBlur={fo}
-                    style={{...iSm,width:"100%",boxSizing:"border-box",padding:"9px 10px",fontSize:"0.85rem",paddingRight:item._isOther?72:10}} />
+                  <input type="text" value={item.description} onChange={e=>updateItem(item.id,"description",e.target.value)}
+                    placeholder={item._isOther ? "Enter clean item name (e.g. Portable Generators ×2)" : "Item description"}
+                    onFocus={fi} onBlur={fo}
+                    style={{...iSm,width:"100%",boxSizing:"border-box",padding:"9px 10px",fontSize:"0.85rem",paddingRight:item._isOther?72:10,
+                      borderColor: item._isOther && !item.description.trim() ? "rgba(232,160,32,0.5)" : undefined}} />
                   {item._isOther&&<span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:8.5,color:"#27a86e",fontFamily:F.body,background:"rgba(39,168,110,0.12)",padding:"2px 7px",borderRadius:2,letterSpacing:"0.12em",textTransform:"uppercase",fontWeight:600}}>Custom</span>}
+                  {item.subtitle&&(
+                    <div style={{fontSize:10,color:C.textDim,fontFamily:F.body,fontWeight:300,marginTop:3,paddingLeft:2}}>{item.subtitle}</div>
+                  )}
                 </div>
-                <input type="number" min="1" value={item.qty} onChange={e=>updateItem(item.id,"qty",e.target.value)} onFocus={fi} onBlur={fo} style={{...iSm,padding:"9px 8px",fontSize:"0.85rem",textAlign:"center",width:"100%",boxSizing:"border-box"}} />
+                {/* Qty — editable for all items */}
+                <input type="number" min="1" value={item.qty} onChange={e=>updateItem(item.id,"qty",e.target.value)} onFocus={fi} onBlur={fo} style={{...iSm,padding:"9px 8px",fontSize:"0.85rem",textAlign:"center",width:"100%",boxSizing:"border-box",marginTop:0}} />
                 <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={e=>updateItem(item.id,"unitPrice",e.target.value)} placeholder="0.00" onFocus={fi} onBlur={fo} style={{...iSm,padding:"9px 8px",fontSize:"0.85rem",width:"100%",boxSizing:"border-box"}} />
-                <button onClick={()=>removeItem(item.id)} disabled={item._isDelivery||item._isOther} style={{background:"none",border:"none",color:(item._isDelivery||item._isOther)?"transparent":C.textDim,cursor:(item._isDelivery||item._isOther)?"default":"pointer",fontSize:16,padding:0,lineHeight:1,transition:"color 0.2s"}}
-                  onMouseEnter={e=>{if(!item._isDelivery&&!item._isOther)e.currentTarget.style.color=C.danger;}}
-                  onMouseLeave={e=>{if(!item._isDelivery&&!item._isOther)e.currentTarget.style.color=C.textDim;}}
+                <button onClick={()=>removeItem(item.id)} disabled={item._isDelivery} style={{background:"none",border:"none",color:item._isDelivery?"transparent":C.textDim,cursor:item._isDelivery?"default":"pointer",fontSize:16,padding:0,lineHeight:1,transition:"color 0.2s",marginTop:2}}
+                  onMouseEnter={e=>{if(!item._isDelivery)e.currentTarget.style.color=C.danger;}}
+                  onMouseLeave={e=>{if(!item._isDelivery)e.currentTarget.style.color=C.textDim;}}
                 >×</button>
               </div>
             ))}

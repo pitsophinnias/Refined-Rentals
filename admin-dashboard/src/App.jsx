@@ -80,10 +80,12 @@ function Shell() {
   const [loading,    setLoading]    = useState(true);
   const [selectedId, setSelectedId] = useState(null);
 
+  const [adminEmail, setAdminEmail] = useState("");
+
   // Verify session cookie on mount
   useEffect(() => {
     authApi.me()
-      .then(() => { setAuthed(true); setAuthChecked(true); })
+      .then(data => { setAdminEmail(data.admin.email); setAuthed(true); setAuthChecked(true); })
       .catch(() => { setAuthed(false); setAuthChecked(true); });
   }, []);
 
@@ -152,7 +154,7 @@ function Shell() {
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.bg, transition: "background 0.3s" }}>
-        <Sidebar page={page} setPage={p => { setPage(p); setSelectedId(null); }} requests={requests} onSignOut={handleSignOut} />
+        <Sidebar page={page} setPage={p => { setPage(p); setSelectedId(null); }} requests={requests} onSignOut={handleSignOut} adminEmail={adminEmail} />
         <main style={{ flex: 1, overflowY: "auto", minHeight: "100vh" }}>
           <TopBar page={page} />
           {page === "dashboard"     && <Dashboard requests={requests} setPage={setPage} setSelectedId={handleSelectId} />}

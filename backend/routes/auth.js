@@ -61,7 +61,11 @@ router.post("/logout", (req, res) => {
 router.get("/me", require("../middleware/auth.js"), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, email, created_at FROM admins WHERE id = $1",
+      `SELECT a.id, a.email, a.created_at,
+              COALESCE(r.role, 'ADMIN') AS role
+       FROM admins a
+       LEFT JOIN admin_roles r ON r.admin_id = a.id
+       WHERE a.id = $1`,
       [req.admin.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: "Admin not found" });

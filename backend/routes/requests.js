@@ -12,6 +12,39 @@ const router      = require("express").Router();
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 
+/* ── Role helpers ────────────────────────────────────────────── */
+const ROLES = {
+  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications"],
+  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications"],
+  FINANCE: ["view","quote","close","notes","activity","notifications"],
+  STAFF:   ["view","review","notes"],
+  VIEWER:  ["view"],
+};
+
+async function getRole(pool, adminId) {
+  const { rows } = await pool.query(
+    "SELECT role FROM admin_roles WHERE admin_id = $1",
+    [adminId]
+  );
+  return rows.length === 0 ? "ADMIN" : rows[0].role;
+}
+
+async function can(pool, adminId, permission) {
+  const role = await getRole(pool, adminId);
+  return (ROLES[role] || ROLES.VIEWER).includes(permission);
+}
+
+/* ── Audit log helper ─────────────────────────────────────────── */
+async function logAction(adminId, adminEmail, action, entityId, detail) {
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (admin_id, admin_email, action, entity, entity_id, detail)
+       VALUES ($1, $2, $3, 'quote_request', $4, $5)`,
+      [adminId, adminEmail, action, entityId, detail || null]
+    );
+  } catch {}
+}
+
 /* ── Helpers ─────────────────────────────────────────────────── */
 
 // Validate RR-### format to prevent path traversal / injection via ID
@@ -172,6 +205,26 @@ router.patch("/:id", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid request ID format" });
   }
 
+  // Role-based permission checks
+  const { status, quote_data, closed_reason, notes } = req.body;
+
+  // Only ADMIN, MANAGER, FINANCE can build/send quotes
+  if (quote_data !== undefined && !await can(pool, req.admin.id, "quote")) {
+    return res.status(403).json({ error: "Your role cannot build or send quotes" });
+  }
+  // Only ADMIN, MANAGER, FINANCE can close requests
+  if (closed_reason !== undefined && !await can(pool, req.admin.id, "close")) {
+    return res.status(403).json({ error: "Your role cannot close requests" });
+  }
+  // STAFF and above can set REVIEW; VIEWER cannot
+  if (status === "REVIEW" && !await can(pool, req.admin.id, "review")) {
+    return res.status(403).json({ error: "Your role cannot change request status" });
+  }
+  // Notes — STAFF and above
+  if (notes !== undefined && !await can(pool, req.admin.id, "notes")) {
+    return res.status(403).json({ error: "Your role cannot add notes" });
+  }
+
   const allowed   = ["status", "notes", "quote_data", "reply_channels", "quoted_at", "closed_reason", "closed_note"];
   const jsonbCols = ["quote_data", "reply_channels"];
 
@@ -217,6 +270,24 @@ router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(sql, values);
     if (rows.length === 0) return res.status(404).json({ error: "Request not found" });
+
+    // Audit log for status changes
+    if (req.body.status) {
+      await logAction(
+        req.admin.id, req.admin.email,
+        `STATUS_${req.body.status}`,
+        req.params.id,
+        `Status changed to ${req.body.status}`
+      );
+    } else if (req.body.quote_data) {
+      await logAction(
+        req.admin.id, req.admin.email,
+        "QUOTE_SENT",
+        req.params.id,
+        "Quote built and sent"
+      );
+    }
+
     res.json({ request: rows[0] });
   } catch (err) {
     console.error("Update request error:", err);
