@@ -13,6 +13,12 @@ const { v4: uuidv4 } = require("uuid");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 
+async function canManageAnnouncements(pool, adminId) {
+  const { rows } = await pool.query("SELECT role FROM admin_roles WHERE admin_id = $1", [adminId]);
+  const role = rows.length === 0 ? "ADMIN" : rows[0].role;
+  return ["ADMIN","MANAGER"].includes(role);
+}
+
 /* ── GET /api/announcements/active — public ─────────────────── */
 // Must be defined before /:id to avoid "active" being treated as an id
 router.get("/active", async (req, res) => {
@@ -46,6 +52,9 @@ router.get("/", requireAuth, async (req, res) => {
 
 /* ── POST /api/announcements — create (admin) ───────────────── */
 router.post("/", requireAuth, async (req, res) => {
+  if (!await canManageAnnouncements(pool, req.admin.id)) {
+    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  }
   const { heading, content, image_url, start_date, end_date } = req.body;
 
   if (!heading || !content || !start_date || !end_date) {
@@ -71,6 +80,9 @@ router.post("/", requireAuth, async (req, res) => {
 
 /* ── PATCH /api/announcements/:id — update (admin) ──────────── */
 router.patch("/:id", requireAuth, async (req, res) => {
+  if (!await canManageAnnouncements(pool, req.admin.id)) {
+    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  }
   const allowed = ["heading", "content", "image_url", "start_date", "end_date", "active"];
   const updates = [];
   const values  = [];
@@ -101,6 +113,9 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
 /* ── DELETE /api/announcements/:id — hard delete (admin) ─────── */
 router.delete("/:id", requireAuth, async (req, res) => {
+  if (!await canManageAnnouncements(pool, req.admin.id)) {
+    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  }
   try {
     const { rowCount } = await pool.query(
       "DELETE FROM announcements WHERE id = $1",

@@ -33,7 +33,7 @@ export default function Requests({ requests, setSelectedId }) {
     .sort((a, b) => {
       if (sort === "newest")     return new Date(b.submitted_at) - new Date(a.submitted_at);
       if (sort === "oldest")     return new Date(a.submitted_at) - new Date(b.submitted_at);
-      if (sort === "event_date") return new Date(a.date) - new Date(b.date);
+      if (sort === "event_date") return new Date(a.date || a.start_date) - new Date(b.date || b.start_date);
       return 0;
     });
 
@@ -189,13 +189,41 @@ export default function Requests({ requests, setSelectedId }) {
 
               {/* Event date */}
               <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>
-                {fmtDate(r.date)}
+                {(() => {
+                  // Multiple days
+                  if (r.start_date && r.end_date && r.start_date !== r.end_date) {
+                    return (
+                      <>
+                        {fmtDate(r.start_date)}
+                        <br/>
+                        <span style={{ fontSize: 11, color: C.textDim }}>– {fmtDate(r.end_date)}</span>
+                      </>
+                    );
+                  }
+                  // Single or overnight
+                  const d = r.date || r.start_date;
+                  return d ? fmtDate(d) : <span style={{ color: C.textDim }}>—</span>;
+                })()}
               </div>
 
               {/* Services */}
               <div style={{ fontFamily: F.body, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
-                {r.services.slice(0, 2).join(", ")}
-                {r.services.length > 2 && <span style={{ color: C.blue }}> +{r.services.length - 2}</span>}
+                {(() => {
+                  const svcs = (r.services || [])
+                    .map(s => {
+                      if (typeof s === "string") return s;
+                      if (s && typeof s === "object" && s.name) return s.name;
+                      return null;
+                    })
+                    .filter(Boolean);
+                  if (svcs.length === 0) return <span style={{ color: C.textDim }}>—</span>;
+                  return (
+                    <>
+                      {svcs.slice(0, 2).join(", ")}
+                      {svcs.length > 2 && <span style={{ color: C.blue }}> +{svcs.length - 2}</span>}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Status */}

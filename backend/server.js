@@ -11,7 +11,7 @@ const helmet       = require("helmet");
 const rateLimit    = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const path         = require("path");
-const { initDB } = require("./db.js");
+const { initDB, initSettingsDB } = require("./db.js");
 
 const app     = express();
 const PORT    = process.env.PORT || 3001;
@@ -58,22 +58,23 @@ app.use(cookieParser());
 
 /* ── Rate limiting — global ───────────────────────────────────── */
 const globalLimiter = rateLimit({
-  windowMs:         15 * 60 * 1000, // 15 minutes
-  max:              200,             // 200 requests per window per IP
-  standardHeaders:  true,
-  legacyHeaders:    false,
-  message:          { error: "Too many requests, please try again later." },
+  windowMs:        15 * 60 * 1000, // 15 minutes
+  max:             500,             // 500 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message:         { error: "Too many requests, please try again later." },
+  skip: (req) => req.path === "/api/auth/me", // session checks don't count
 });
 app.use(globalLimiter);
 
 /* ── Rate limiting — strict on login ─────────────────────────── */
 const loginLimiter = rateLimit({
-  windowMs:         15 * 60 * 1000, // 15 minutes
-  max:              5,               // 5 attempts per window per IP
-  standardHeaders:  true,
-  legacyHeaders:    false,
-  message:          { error: "Too many login attempts. Please wait 15 minutes before trying again." },
-  skipSuccessfulRequests: true,      // only count failed attempts
+  windowMs:               15 * 60 * 1000,
+  max:                    5,
+  standardHeaders:        true,
+  legacyHeaders:          false,
+  message:                { error: "Too many login attempts. Please wait 15 minutes before trying again." },
+  skipSuccessfulRequests: true, // only count failed attempts toward the limit
 });
 app.use("/api/auth/login", loginLimiter);
 
@@ -91,6 +92,7 @@ app.use("/api/auth",          require("./routes/auth.js"));
 app.use("/api/requests",      require("./routes/requests.js"));
 app.use("/api/gallery",       require("./routes/gallery.js"));
 app.use("/api/announcements", require("./routes/announcements.js"));
+app.use("/api/settings",      require("./routes/settings.js"));
 
 /* ── Health check ─────────────────────────────────────────────── */
 app.get("/api/health", (req, res) => {
@@ -118,6 +120,7 @@ app.use((err, req, res, next) => {
 /* ── Start ────────────────────────────────────────────────────── */
 async function start() {
   await initDB();
+  await initSettingsDB();
   app.listen(PORT, () => {
     console.log(`\n✓ Refined Rentals API running on http://localhost:${PORT}`);
     console.log(`  Environment:   ${isProd ? "production" : "development"}`);

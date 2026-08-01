@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
+import { usePermissions } from "../usePermissions.js";
 import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import ReplyModal  from "../components/ReplyModal.jsx";
@@ -137,6 +138,7 @@ function CloseModal({ request, onClose, onConfirm }) {
 import { useRef } from "react";
 
 export default function RequestDetail({ request, onBack, onUpdate }) {
+  const { can } = usePermissions();
   const { C, F } = useTheme();
 
   const [showReply, setShowReply]     = useState(false);
@@ -266,7 +268,12 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           <h1 style={{ fontFamily:F.display, fontSize:"1.9rem", fontWeight:500, color:C.textPrimary, margin:"0 0 0.5rem" }}>{request.name}</h1>
           <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
             <StatusBadge status={request.status} />
-            <span style={{ color:C.textDim, fontSize:12, fontFamily:F.body }}>{request.event} · {fmtDate(request.date)}</span>
+            <span style={{ color:C.textDim, fontSize:12, fontFamily:F.body }}>
+              {request.event} ·{" "}
+              {request.duration === "multiple"
+                ? `${fmtDate(request.start_date)} – ${fmtDate(request.end_date)}`
+                : fmtDate(request.date || request.start_date)}
+            </span>
             {/* 7-day countdown badge */}
             {isQuoted && countdown && !countdown.expired && (
               <span style={{ background:"rgba(232,160,32,0.12)", border:"1px solid rgba(232,160,32,0.3)", color:"#e8a020", padding:"3px 10px", borderRadius:2, fontSize:10, fontFamily:F.body, fontWeight:600, letterSpacing:"0.12em" }}>
@@ -284,7 +291,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
         {/* action buttons */}
         <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
           {/* QUOTE REPLY button */}
-          {!isClosed && (
+          {!isClosed && can("quote") && (
             <button onClick={handleReviseClick} style={{ background:C.blue, border:"none", color:C.white, cursor:"pointer", padding:"10px 22px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s", display:"flex", alignItems:"center", gap:7 }}
               onMouseEnter={e=>e.currentTarget.style.background=C.blueLight}
               onMouseLeave={e=>e.currentTarget.style.background=C.blue}
@@ -294,7 +301,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             </button>
           )}
           {/* CLOSE button */}
-          {(isQuoted || request.status === "REVIEW") && (
+          {(isQuoted || request.status === "REVIEW") && can("close") && (
             <button onClick={()=>setShowClose(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, color:C.textSecondary, cursor:"pointer", padding:"10px 18px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}
               onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.danger; e.currentTarget.style.color=C.danger; }}
               onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.textSecondary; }}
@@ -318,17 +325,53 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
 
           {/* Event details */}
           <Card title="Event Details">
-            <InfoRow label="Type"     value={request.event} />
-            <InfoRow label="Date"     value={fmtDate(request.date)} />
-            <InfoRow label="Location" value={request.location} />
+            <InfoRow label="Event Type" value={request.event} />
+            <InfoRow label="Location"   value={request.location} />
+            <InfoRow label="Duration"   value={
+              request.duration === "multiple"
+                ? "Multiple Days"
+                : request.duration === "overnight"
+                ? "Overnight"
+                : "Single Day"
+            } />
+            {request.duration === "multiple" ? (
+              <>
+                <InfoRow label="Start Date" value={fmtDate(request.start_date)} />
+                <InfoRow label="End Date"   value={fmtDate(request.end_date)} />
+              </>
+            ) : (
+              <InfoRow label="Event Date" value={fmtDate(request.date || request.start_date)} />
+            )}
+            {request.tent_size && (
+              <InfoRow label="Tent Size" value={
+                request.tent_size === "9x9"  ? "9 × 9m"  :
+                request.tent_size === "9x12" ? "9 × 12m" :
+                request.tent_size === "9x15" ? "9 × 15m" :
+                request.tent_size
+              } />
+            )}
+            {request.tent_config && (
+              <InfoRow label="Tent Config" value={
+                request.tent_config === "cinema" ? "Cinema / Chairs Only" :
+                request.tent_config === "tables" ? "With Round Tables" :
+                request.tent_config
+              } />
+            )}
           </Card>
 
           {/* Services */}
           <Card title="Services Requested">
             <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom: request.other ? "1rem" : 0 }}>
-              {request.services.map(s=>(
-                <span key={s} style={{ background:C.blueDim, border:`1px solid ${C.borderBlue}`, color:C.blue, padding:"5px 12px", borderRadius:2, fontSize:11, fontFamily:F.body, fontWeight:500, letterSpacing:"0.08em" }}>{s}</span>
-              ))}
+              {(request.services || []).map((s, i) => {
+                const name = typeof s === "object" ? s.name : s;
+                const qty  = typeof s === "object" && s.qty > 1 ? s.qty : null;
+                return (
+                  <span key={i} style={{ background:C.blueDim, border:`1px solid ${C.borderBlue}`, color:C.blue, padding:"5px 12px", borderRadius:2, fontSize:11, fontFamily:F.body, fontWeight:500, letterSpacing:"0.08em", display:"flex", alignItems:"center", gap:6 }}>
+                    {name}
+                    {qty && <span style={{ background:C.blue, color:"#fff", borderRadius:10, padding:"0px 6px", fontSize:9, fontWeight:700 }}>×{qty}</span>}
+                  </span>
+                );
+              })}
             </div>
             {request.other && (
               <div style={{ marginTop:"0.75rem", background:"rgba(232,160,32,0.07)", border:"1px solid rgba(232,160,32,0.2)", borderRadius:2, padding:"10px 12px" }}>
@@ -362,6 +405,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                       <div style={{ fontFamily:F.body, fontSize:"0.83rem", color:C.textPrimary }}>
                         {item.description}
                         {item._isOther&&<span style={{ marginLeft:6, fontSize:8.5, color:"#27a86e", background:"rgba(39,168,110,0.1)", padding:"1px 5px", borderRadius:2 }}>Custom</span>}
+                        {item.subtitle&&<div style={{ fontSize:10, color:C.textDim, fontWeight:300, marginTop:2 }}>{item.subtitle}</div>}
                       </div>
                       <div style={{ fontFamily:F.body, fontSize:"0.83rem", color:C.textDim, textAlign:"center" }}>{item.qty||1}</div>
                       <div style={{ fontFamily:F.body, fontSize:"0.83rem", color:C.textDim }}>{currency(item.unitPrice)}</div>
@@ -509,7 +553,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                 const cur       = STATUS_FLOW.indexOf(request.status);
                 const past      = idx < cur;
                 // Only REVIEW is manually settable — and only when current status is NEW
-                const clickable = s === "REVIEW" && request.status === "NEW";
+                const clickable = s === "REVIEW" && request.status === "NEW" && can("review");
                 return (
                   <button
                     key={s}

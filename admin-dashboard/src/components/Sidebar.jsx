@@ -4,6 +4,7 @@
  */
 
 import { useTheme } from "../ThemeProvider.jsx";
+import { usePermissions, ROLE_LABELS } from "../usePermissions.js";
 
 const NAV = [
   { id: "dashboard",     label: "Dashboard",       icon: <svg viewBox="0 0 20 20" fill="none" style={{width:17,height:17}}><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="11" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="11" y="11" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg> },
@@ -13,8 +14,9 @@ const NAV = [
   { id: "settings",      label: "Settings",         icon: <svg viewBox="0 0 20 20" fill="none" style={{width:17,height:17}}><circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
 ];
 
-export default function Sidebar({ page, setPage, requests, onSignOut }) {
+export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail }) {
   const { C, F } = useTheme();
+  const { can, role, roleLabel } = usePermissions();
   const newCount = requests.filter(r => r.status === "NEW").length;
 
   // Check for expiring announcements (within 24h)
@@ -43,7 +45,12 @@ export default function Sidebar({ page, setPage, requests, onSignOut }) {
 
       {/* Navigation */}
       <nav style={{ flex: 1, padding: "1.25rem 0.75rem", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV.map(item => {
+        {NAV.filter(item => {
+          if (item.id === "gallery"       && !can("gallery"))       return false;
+          if (item.id === "announcements" && !can("announcements")) return false;
+          if (item.id === "settings"      && !can("notes"))         return false; // only staff+ see settings
+          return true;
+        }).map(item => {
           const active = page === item.id;
           const badge  = item.id === "requests" ? newCount
                        : item.id === "announcements" ? expiringCount : 0;
@@ -65,8 +72,11 @@ export default function Sidebar({ page, setPage, requests, onSignOut }) {
 
       {/* Footer */}
       <div style={{ padding: "1rem 1.5rem", borderTop: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body }}>
-          Logged in as <span style={{ color: C.textSecondary, fontWeight: 500 }}>Admin</span>
+        <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, lineHeight: 1.5 }}>
+          <div style={{ color: C.textSecondary, fontWeight: 500, marginBottom: 3 }}>{adminEmail || "Admin"}</div>
+          <span style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: role === "ADMIN" ? C.blueDim : "rgba(232,160,32,0.1)", color: role === "ADMIN" ? C.blue : "#e8a020" }}>
+            {roleLabel}
+          </span>
         </div>
         <button onClick={onSignOut} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(217,79,79,0.08)", border: "1px solid rgba(217,79,79,0.2)", borderRadius: 2, color: C.danger, cursor: "pointer", fontSize: C.fontSizeSm, letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: F.body, fontWeight: 600, padding: "9px 12px", width: "100%", transition: "background 0.2s, border-color 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.background = "rgba(217,79,79,0.15)"; e.currentTarget.style.borderColor = "rgba(217,79,79,0.4)"; }}
