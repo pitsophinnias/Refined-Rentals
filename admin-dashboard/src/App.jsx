@@ -84,9 +84,11 @@ function Shell() {
 
   // Verify session cookie on mount
   useEffect(() => {
+    const token = getToken();
+    if (!token) { setAuthed(false); setAuthChecked(true); return; }
     authApi.me()
       .then(data => { setAdminEmail(data.admin.email); setAuthed(true); setAuthChecked(true); })
-      .catch(() => { setAuthed(false); setAuthChecked(true); });
+      .catch(() => { clearToken(); setAuthed(false); setAuthChecked(true); });
   }, []);
 
   useEffect(() => {
@@ -144,7 +146,7 @@ function Shell() {
   if (!authed) return (
     <>
       <GlobalStyles C={C} />
-      <Login onLogin={(token) => { setToken(token); setAuthed(true); }} />
+      <Login onLogin={(token, email) => { setToken(token); setAdminEmail(email); setAuthed(true); }} />
     </>
   );
 
