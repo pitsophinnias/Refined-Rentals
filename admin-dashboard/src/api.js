@@ -5,7 +5,7 @@
  * On production with a real domain, this switches to httpOnly cookies.
  */
 
-const BASE = "http://localhost:3001/api";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 /* ── Token storage — sessionStorage ─────────────────────────── */
 export function getToken() {
