@@ -23,7 +23,7 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const data = await authApi.login(email, pass);
-      onLogin(data.token);
+      onLogin(data.token, data.admin.email);
     } catch (err) {
       setError(err.message === "Invalid credentials"
         ? "Incorrect email or password. Please try again."
