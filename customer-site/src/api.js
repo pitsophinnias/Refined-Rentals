@@ -3,7 +3,7 @@
  * All calls go to the local backend at http://localhost:3001
  */
 
-const BASE = "http://localhost:3001/api";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 async function apiFetch(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
