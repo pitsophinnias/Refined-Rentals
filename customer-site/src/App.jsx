@@ -135,7 +135,7 @@ const SERVICES = [
 const WHY_US = [
   { num: "01", label: "Quality You Can See",     desc: "Our equipment is well-maintained, regularly serviced, and sourced for events that actually matter." },
   { num: "02", label: "Built Around Your Event", desc: "No two events are the same. We listen first, then put together exactly what you need." },
-  { num: "03", label: "We Handle the Setup",     desc: "Delivery, installation, and collection — all managed by our team so you can focus elsewhere." },
+  { num: "03", label: "We Handle the Setup",     desc: "Delivery, installation, and collection, all managed by our team so you can focus elsewhere." },
   { num: "04", label: "Reliable From Start to Finish", desc: "We show up when we say we will, set up as agreed, and leave the space as we found it." },
 ];
 
@@ -222,6 +222,48 @@ function AnnouncementBanner({ dismissed, onDismiss }) {
   );
 }
 
+/* ─── Smooth scroll ──────────────────────────────────────────── */
+// Custom eased scroll (rAF-driven) so in-page navigation feels slower and
+// more deliberate than the browser's default smooth-scroll.
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function smoothScrollTo(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // The page sets `scroll-behavior: smooth` globally, which would otherwise
+  // fight this rAF-driven animation (each frame's scrollTo getting its own
+  // native smoothing on top). Suspend it for the duration of this scroll.
+  const root = document.documentElement;
+  const prevBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+
+  const startY = window.scrollY;
+  const targetY = el.getBoundingClientRect().top + startY;
+  const diff = targetY - startY;
+
+  // A fixed duration makes long jumps (e.g. footer back up to the hero)
+  // race past far faster than short ones covering the same time window.
+  // Scale the duration with distance instead, within a sensible range.
+  const distance = Math.abs(diff);
+  const duration = Math.min(1700, Math.max(1050, 1050 + (distance - 800) * 0.12));
+
+  const startTime = performance.now();
+
+  const step = (now) => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    window.scrollTo(0, startY + diff * easeInOutCubic(progress));
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      root.style.scrollBehavior = prevBehavior;
+    }
+  };
+  requestAnimationFrame(step);
+}
+
 /* ─── Navigation ─────────────────────────────────────────────── */
 function Nav({ active, onQuote }) {
   const [scrolled, setScrolled] = useState(false);
@@ -241,7 +283,7 @@ function Nav({ active, onQuote }) {
   }, [menuOpen]);
 
   const go = (id) => {
-    document.getElementById(id.toLowerCase())?.scrollIntoView({ behavior: "smooth" });
+    smoothScrollTo(id.toLowerCase());
     setMenuOpen(false);
   };
 
@@ -345,7 +387,7 @@ function Hero({ onQuote }) {
           </p>
           <div style={{ ...fade(0.42), display: "flex", gap: 14, flexWrap: "wrap" }}>
             <button onClick={() => onQuote(null)} style={{ background: C.blue, border: "none", cursor: "pointer", color: C.white, padding: "14px 32px", borderRadius: 1, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Sans', system-ui, sans-serif", transition: "background 0.25s", whiteSpace: "nowrap" }} onMouseEnter={e => e.currentTarget.style.background = C.blueLight} onMouseLeave={e => e.currentTarget.style.background = C.blue}>Request a Quote</button>
-            <button onClick={() => document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.18)", cursor: "pointer", color: "rgba(255,255,255,0.65)", padding: "14px 32px", borderRadius: 1, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, fontFamily: "'DM Sans', system-ui, sans-serif", transition: "border-color 0.25s, color 0.25s", whiteSpace: "nowrap" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; e.currentTarget.style.color = C.white; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "rgba(255,255,255,0.65)"; }}>See Our Services</button>
+            <button onClick={() => smoothScrollTo("services")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.18)", cursor: "pointer", color: "rgba(255,255,255,0.65)", padding: "14px 32px", borderRadius: 1, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, fontFamily: "'DM Sans', system-ui, sans-serif", transition: "border-color 0.25s, color 0.25s", whiteSpace: "nowrap" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; e.currentTarget.style.color = C.white; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "rgba(255,255,255,0.65)"; }}>See Our Services</button>
           </div>
         </div>
 
@@ -776,7 +818,7 @@ function Footer() {
         <div className="rr-note-text" style={{ color: "rgba(194,202,216,0.7)", fontSize: "0.77rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>&#169; {new Date().getFullYear()} &middot; Lesotho</div>
         <div style={{ display: "flex", gap: 24 }}>
           {NAV_LINKS.map(l => (
-            <button key={l} onClick={() => document.getElementById(l.toLowerCase())?.scrollIntoView({ behavior: "smooth" })} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(194,202,216,0.7)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.85)"} onMouseLeave={e => e.currentTarget.style.color = "rgba(194,202,216,0.7)"}>{l}</button>
+            <button key={l} onClick={() => smoothScrollTo(l.toLowerCase())} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(194,202,216,0.7)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.85)"} onMouseLeave={e => e.currentTarget.style.color = "rgba(194,202,216,0.7)"}>{l}</button>
           ))}
         </div>
       </div>
@@ -1035,6 +1077,7 @@ export default function App() {
     const style = document.createElement("style");
     style.textContent = `
       *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; background: #03112e; }
       #root { width: 100%; max-width: 100%; min-height: 100vh; background: #03112e; }
       ::-webkit-scrollbar { width: 5px; }
