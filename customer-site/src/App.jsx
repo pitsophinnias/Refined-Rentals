@@ -15,7 +15,7 @@ const C = {
   blueLight: "#4db8e0",
   white:     "#ffffff",
   offWhite:  "#f5f6f9",
-  slate:     "#8a97b0",
+  slate:     "#56698a",
   slateLight:"#c2cad8",
 };
 
@@ -340,7 +340,7 @@ function Hero({ onQuote }) {
             Elevating Events.<br />
             <span style={{ color: C.blue, fontStyle: "italic" }}>Redefining</span>{" "}What Luxury Looks Like.
           </h1>
-          <p style={{ ...fade(0.3), color: "rgba(255,255,255,0.45)", fontSize: "clamp(0.9rem, 1.3vw, 1rem)", lineHeight: 1.85, maxWidth: 400, margin: "0 0 2.5rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>
+          <p style={{ ...fade(0.3), color: "#c2cad8", fontSize: "clamp(0.9rem, 1.3vw, 1rem)", lineHeight: 1.85, maxWidth: 400, margin: "0 0 2.5rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>
             Frame tents, VIP mobile facilities, and premium carpeting for weddings, corporate events, and celebrations across Lesotho.
           </p>
           <div style={{ ...fade(0.42), display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -351,7 +351,7 @@ function Hero({ onQuote }) {
 
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "3rem" }}>
           <div style={{ opacity: ready ? 1 : 0, transition: "opacity 0.9s ease 0.28s" }}>
-            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(1.05rem, 1.6vw, 1.3rem)", fontWeight: 400, fontStyle: "italic", color: "rgba(255,255,255,0.32)", lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(1.05rem, 1.6vw, 1.3rem)", fontWeight: 400, fontStyle: "italic", color: "#c2cad8", lineHeight: 1.6, margin: 0 }}>
               Everything Your Event Needs,<br />Handled With Care.
             </p>
           </div>
@@ -360,7 +360,7 @@ function Hero({ onQuote }) {
             {[["4","Rental Categories"],["100%","Custom Setups"],["Lesotho","Wide Coverage"]].map(([val, lab]) => (
               <div key={lab}>
                 <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(1.8rem, 3vw, 2.6rem)", fontWeight: 500, color: C.white, lineHeight: 1 }}>{val}</div>
-                <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginTop: 3, fontFamily: "'DM Sans', system-ui, sans-serif" }}>{lab}</div>
+                <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginTop: 3, fontFamily: "'DM Sans', system-ui, sans-serif" }}>{lab}</div>
               </div>
             ))}
           </div>
@@ -380,7 +380,7 @@ function Services({ onQuote }) {
           <SectionLabel text="What We Offer" />
           <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.1rem, 4vw, 3.25rem)", fontWeight: 500, color: C.navy, margin: 0, lineHeight: 1.12 }}>Our Services</h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(255px, 1fr))", gap: 20 }}>
+        <div className="rr-services-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(255px, 1fr))", gap: 20 }}>
           {SERVICES.map((s, i) => (
             <Reveal key={s.id} delay={i * 0.08}>
               <ServiceCard service={s} onQuote={onQuote} />
@@ -388,6 +388,12 @@ function Services({ onQuote }) {
           ))}
         </div>
       </div>
+      <style>{`
+        @media(max-width:600px){
+          .rr-services-grid{grid-template-columns:1fr 1fr!important;gap:12px!important}
+          .rr-service-card{padding:1.25rem 1rem!important}
+        }
+      `}</style>
     </section>
   );
 }
@@ -395,7 +401,7 @@ function Services({ onQuote }) {
 function ServiceCard({ service: s, onQuote }) {
   const [hovered, setHovered] = useState(false);
   return (
-    <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ background: C.white, border: `1px solid ${hovered ? "rgba(33,150,196,0.25)" : "rgba(0,0,0,0.07)"}`, borderRadius: 2, padding: "2.25rem 2rem", transition: "border-color 0.3s, box-shadow 0.3s, transform 0.3s", transform: hovered ? "translateY(-5px)" : "translateY(0)", boxShadow: hovered ? "0 16px 48px rgba(3,17,46,0.09)" : "none", cursor: "default", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div className="rr-service-card" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ background: C.white, border: `1px solid ${hovered ? "rgba(33,150,196,0.25)" : "rgba(0,0,0,0.07)"}`, borderRadius: 2, padding: "2.25rem 2rem", transition: "border-color 0.3s, box-shadow 0.3s, transform 0.3s", transform: hovered ? "translateY(-5px)" : "translateY(0)", boxShadow: hovered ? "0 16px 48px rgba(3,17,46,0.09)" : "none", cursor: "default", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${C.blue}, ${C.blueLight})`, transform: hovered ? "scaleX(1)" : "scaleX(0)", transformOrigin: "left", transition: "transform 0.35s ease" }} />
       <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontWeight: 600, marginBottom: "1.5rem", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{s.tag}</div>
       <div style={{ color: C.navyMid, marginBottom: "1.25rem", opacity: 0.75 }}>{s.icon}</div>
@@ -421,8 +427,8 @@ function About({ onQuote }) {
             <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.1rem, 3.8vw, 3rem)", fontWeight: 500, color: C.white, margin: "0 0 1.5rem", lineHeight: 1.12 }}>
               Built for Events That <span style={{ color: C.blue, fontStyle: "italic" }}>Deserve Better</span>
             </h2>
-            <p style={{ color: "rgba(255,255,255,0.52)", lineHeight: 1.85, fontSize: "0.97rem", marginBottom: "1.1rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>Refined Rentals was started with a clear purpose: to bring properly maintained, good-looking event equipment to Lesotho. Not just something to fill a space, but rental items that actually add to what your event looks and feels like.</p>
-            <p style={{ color: "rgba(255,255,255,0.52)", lineHeight: 1.85, fontSize: "0.97rem", marginBottom: "2.5rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>From weddings and corporate functions to smaller private gatherings, we work with clients who care about the details. We do too.</p>
+            <p style={{ color: "#c2cad8", lineHeight: 1.85, fontSize: "0.97rem", marginBottom: "1.1rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>Refined Rentals was started with a clear purpose: to bring properly maintained, good-looking event equipment to Lesotho. Not just something to fill a space, but rental items that actually add to what your event looks and feels like.</p>
+            <p style={{ color: "#c2cad8", lineHeight: 1.85, fontSize: "0.97rem", marginBottom: "2.5rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>From weddings and corporate functions to smaller private gatherings, we work with clients who care about the details. We do too.</p>
             <button onClick={() => onQuote(null)} style={{ background: "transparent", border: `1px solid ${C.blue}`, cursor: "pointer", color: C.blue, padding: "13px 30px", borderRadius: 1, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Sans', system-ui, sans-serif", transition: "background 0.25s, color 0.25s" }} onMouseEnter={e => { e.currentTarget.style.background = C.blue; e.currentTarget.style.color = C.white; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.blue; }}>Get In Touch</button>
           </Reveal>
           <Reveal delay={0.15}>
@@ -431,7 +437,7 @@ function About({ onQuote }) {
                 <div key={item.num} style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 2, padding: "1.5rem 1.25rem", transition: "border-color 0.3s, background 0.3s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(33,150,196,0.2)"; e.currentTarget.style.background = "rgba(33,150,196,0.05)"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "transparent"; }}>
                   <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.4rem", color: C.blue, fontWeight: 500, marginBottom: "0.75rem", opacity: 0.6 }}>{item.num}</div>
                   <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.05rem", fontWeight: 600, color: C.white, marginBottom: "0.5rem", lineHeight: 1.3 }}>{item.label}</div>
-                  <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.83rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{item.desc}</div>
+                  <div style={{ color: "#c2cad8", fontSize: "0.83rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{item.desc}</div>
                 </div>
               ))}
             </div>
@@ -444,6 +450,71 @@ function About({ onQuote }) {
 }
 
 /* ─── Gallery Film Reel ──────────────────────────────────────── */
+/* Auto-scrolling vertical strip — used in pairs to give the mobile gallery
+   the same continuous motion as the desktop film reel, without introducing
+   horizontal scroll. */
+function GalleryColumn({ cards, direction, speed, height, cardHeight, gap, onOpen }) {
+  const trackRef = useRef(null);
+  const posRef = useRef(0);
+  const lastRef = useRef(null);
+  const rafRef = useRef(null);
+  const triple = [...cards, ...cards, ...cards];
+  const totalH = cards.length * (cardHeight + gap);
+
+  useEffect(() => {
+    if (totalH === 0) return;
+    const mq = window.matchMedia("(max-width:600px)");
+    let active = mq.matches;
+    const onChange = e => { active = e.matches; };
+    mq.addEventListener("change", onChange);
+
+    const tick = ts => {
+      const track = trackRef.current;
+      if (active && track) {
+        if (lastRef.current !== null) {
+          const dt = ts - lastRef.current;
+          posRef.current += direction * speed * dt;
+          posRef.current = ((posRef.current % totalH) + totalH) % totalH;
+          track.style.transform = `translateY(${-posRef.current}px)`;
+        }
+        lastRef.current = ts;
+      } else {
+        lastRef.current = null;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(rafRef.current); mq.removeEventListener("change", onChange); };
+  }, [direction, speed, totalH]);
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", height, borderRadius: 3 }}>
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: `linear-gradient(to bottom, ${C.offWhite} 0%, transparent 10%, transparent 90%, ${C.offWhite} 100%)` }} />
+      <div ref={trackRef} style={{ display: "flex", flexDirection: "column", gap, willChange: "transform" }}>
+        {triple.map((card, idx) => (
+          <div
+            key={idx}
+            onClick={() => onOpen(card)}
+            style={{ position: "relative", flexShrink: 0, height: cardHeight, borderRadius: 3, overflow: "hidden", cursor: "zoom-in", border: "1px solid rgba(3,17,46,0.08)" }}
+          >
+            {card.type === "video" ? (
+              <video src={card.src} autoPlay muted loop playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <img src={card.src} alt={card.label || ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            )}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(3,17,46,0.65) 0%, transparent 45%)" }} />
+            {card.label && (
+              <div style={{ position: "absolute", bottom: 8, left: 10, right: 10, fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.85)", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {card.label}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Gallery() {
   const [slides, setSlides] = useState(DEFAULT_SLIDES);
   const [lightbox, setLightbox] = useState(null);
@@ -527,24 +598,25 @@ function Gallery() {
   const allCards = [...cards, ...cards, ...cards];
 
   return (
-    <section id="gallery" style={{ background: C.navy, padding: "clamp(5rem, 9vw, 8rem) 0", overflow: "hidden" }}>
+    <section id="gallery" style={{ background: C.offWhite, padding: "clamp(5rem, 9vw, 8rem) 0", overflow: "hidden" }}>
 
       {/* Heading */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 clamp(1.25rem, 5vw, 4rem)", marginBottom: "3rem" }}>
         <Reveal>
           <SectionLabel text="Our Work" />
-          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.1rem, 4vw, 3.25rem)", fontWeight: 500, color: C.white, margin: 0, lineHeight: 1.12 }}>Equipment in Action</h2>
+          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.1rem, 4vw, 3.25rem)", fontWeight: 500, color: C.navy, margin: 0, lineHeight: 1.12 }}>Equipment in Action</h2>
         </Reveal>
       </div>
 
-      {/* Film reel track */}
+      {/* Film reel track — desktop/tablet only, replaced by a static grid on mobile */}
       <div
+        className="rr-gallery-reel"
         style={{ position: "relative", overflow: "hidden", height: CARD_H + 60, cursor: "grab" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
         {/* Left / right fade vignette */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: `linear-gradient(to right, ${C.navy} 0%, transparent 8%, transparent 92%, ${C.navy} 100%)` }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", background: `linear-gradient(to right, ${C.offWhite} 0%, transparent 8%, transparent 92%, ${C.offWhite} 100%)` }} />
 
         {/* Scrolling track */}
         <div
@@ -572,12 +644,12 @@ function Gallery() {
                 borderRadius: 3,
                 overflow: "hidden",
                 cursor: "zoom-in",
-                boxShadow: "0 8px 40px rgba(0,0,0,0.45)",
+                boxShadow: "0 8px 40px rgba(3,17,46,0.18)",
                 transition: "box-shadow 0.3s",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid rgba(3,17,46,0.08)",
               }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 12px 52px rgba(33,150,196,0.25)"}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 8px 40px rgba(0,0,0,0.45)"}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 8px 40px rgba(3,17,46,0.18)"}
             >
               {card.type === "video" ? (
                 <video
@@ -595,7 +667,7 @@ function Gallery() {
               {/* Bottom gradient + label */}
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(3,17,46,0.7) 0%, transparent 45%)" }} />
               {card.label && (
-                <div style={{ position: "absolute", bottom: 10, left: 12, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 400 }}>
+                <div style={{ position: "absolute", bottom: 10, left: 12, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c2cad8", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 400 }}>
                   {card.label}
                 </div>
               )}
@@ -613,11 +685,24 @@ function Gallery() {
 
         {/* Pause hint */}
         {paused && (
-          <div style={{ position: "absolute", bottom: 14, right: 20, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontFamily: "'DM Sans', system-ui, sans-serif", zIndex: 3, pointerEvents: "none" }}>
+          <div style={{ position: "absolute", bottom: 14, right: 20, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(3,17,46,0.35)", fontFamily: "'DM Sans', system-ui, sans-serif", zIndex: 3, pointerEvents: "none" }}>
             Paused · Click to open
           </div>
         )}
       </div>
+
+      {/* Counter-scrolling column pair — mobile only, keeps the reel's motion without horizontal scroll */}
+      <div className="rr-gallery-grid" style={{ display: "none", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "0 clamp(1.25rem, 5vw, 4rem)", maxWidth: 1200, margin: "0 auto" }}>
+        <GalleryColumn cards={cards.filter((_, i) => i % 2 === 0)} direction={1}  speed={0.05}  height={480} cardHeight={160} gap={10} onOpen={setLightbox} />
+        <GalleryColumn cards={cards.filter((_, i) => i % 2 === 1)} direction={-1} speed={0.042} height={480} cardHeight={160} gap={10} onOpen={setLightbox} />
+      </div>
+
+      <style>{`
+        @media(max-width:600px){
+          .rr-gallery-reel{display:none!important}
+          .rr-gallery-grid{display:grid!important}
+        }
+      `}</style>
 
       {/* Lightbox */}
       {lightbox && (
@@ -644,7 +729,7 @@ function Contact({ onQuote }) {
           <Reveal>
             <SectionLabel text="Get In Touch" />
             <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.1rem, 3.8vw, 3rem)", fontWeight: 500, color: C.white, margin: "0 0 1.25rem", lineHeight: 1.12 }}>Tell Us About<br /><span style={{ color: C.blue, fontStyle: "italic" }}>Your Event</span></h2>
-            <p style={{ color: "rgba(255,255,255,0.45)", lineHeight: 1.8, fontSize: "0.93rem", marginBottom: "2.75rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>Prefer to get a quote quickly? Use the button below and we will come back to you with everything you need.</p>
+            <p style={{ color: "#c2cad8", lineHeight: 1.8, fontSize: "0.93rem", marginBottom: "2.75rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>Prefer to get a quote quickly? Use the button below and we will come back to you with everything you need.</p>
             <button onClick={() => onQuote(null)} style={{ background: C.blue, border: "none", cursor: "pointer", color: C.white, padding: "14px 30px", borderRadius: 1, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Sans', system-ui, sans-serif", transition: "background 0.25s", marginBottom: "2.5rem" }} onMouseEnter={e => e.currentTarget.style.background = C.blueLight} onMouseLeave={e => e.currentTarget.style.background = C.blue}>Open Quote Form</button>
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               {[{ label: "Phone", values: ["+266 6363 0598", "+266 5885 8114"] }, { label: "Email", values: ["refinedrentals.lso@gmail.com"] }, { label: "Facebook", values: ["Refined Rentals"] }].map(c => (
@@ -664,12 +749,12 @@ function Contact({ onQuote }) {
                 <div key={img.label} style={{ position: "relative", paddingBottom: "66%", borderRadius: 2, overflow: "hidden", background: C.navyLight }}>
                   <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${C.navyMid}, ${C.navyLight})` }} />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(3,17,46,0.5), transparent)" }} />
-                  <div style={{ position: "absolute", bottom: 10, left: 12, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{img.label}</div>
+                  <div style={{ position: "absolute", bottom: 10, left: 12, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c2cad8", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{img.label}</div>
                 </div>
               ))}
             </div>
             <div style={{ border: "1px solid rgba(33,150,196,0.12)", borderRadius: 2, padding: "1.25rem" }}>
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.35)", fontSize: "0.82rem", lineHeight: 1.7, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300, fontStyle: "italic" }}>
+              <p style={{ margin: 0, color: "#c2cad8", fontSize: "0.82rem", lineHeight: 1.7, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300, fontStyle: "italic" }}>
                 "We don't just drop equipment and leave. Every setup is done properly, and we're available throughout your event if you need us."
               </p>
               <div style={{ marginTop: "0.75rem", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: C.blue, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Refined Rentals</div>
@@ -686,15 +771,20 @@ function Contact({ onQuote }) {
 function Footer() {
   return (
     <footer style={{ background: "#010a1a", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "2.25rem clamp(1.25rem, 5vw, 4rem)" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: "rgba(255,255,255,0.55)", fontWeight: 500, fontSize: 16, letterSpacing: "0.06em" }}>Refined Rentals (PTY) LTD</div>
-        <div style={{ color: "rgba(255,255,255,0.18)", fontSize: "0.77rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>&#169; {new Date().getFullYear()} &middot; Lesotho</div>
+      <div className="rr-footer-row" style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: "#c2cad8", fontWeight: 500, fontSize: 16, letterSpacing: "0.06em" }}>Refined Rentals (PTY) LTD</div>
+        <div className="rr-note-text" style={{ color: "rgba(194,202,216,0.7)", fontSize: "0.77rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>&#169; {new Date().getFullYear()} &middot; Lesotho</div>
         <div style={{ display: "flex", gap: 24 }}>
           {NAV_LINKS.map(l => (
-            <button key={l} onClick={() => document.getElementById(l.toLowerCase())?.scrollIntoView({ behavior: "smooth" })} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(255,255,255,0.25)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.6)"} onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.25)"}>{l}</button>
+            <button key={l} onClick={() => document.getElementById(l.toLowerCase())?.scrollIntoView({ behavior: "smooth" })} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(194,202,216,0.7)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.85)"} onMouseLeave={e => e.currentTarget.style.color = "rgba(194,202,216,0.7)"}>{l}</button>
           ))}
         </div>
       </div>
+      <style>{`
+        @media(max-width:600px){
+          .rr-footer-row{flex-direction:column!important;align-items:center!important;text-align:center!important;gap:14px!important}
+        }
+      `}</style>
     </footer>
   );
 }
@@ -773,7 +863,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
 
   return (
     <div ref={overlayRef} onClick={e => { if (e.target === overlayRef.current) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(2,10,28,0.88)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "1.5rem 1rem", overflowY: "auto" }}>
-      <div style={{ background: C.navyMid, border: "1px solid rgba(33,150,196,0.15)", borderRadius: 3, width: "100%", maxWidth: 640, padding: "2rem", position: "relative", marginBottom: "1.5rem" }}>
+      <div className="rr-modal-card" style={{ background: C.navyMid, border: "1px solid rgba(33,150,196,0.15)", borderRadius: 3, width: "100%", maxWidth: 640, padding: "2rem", position: "relative", marginBottom: "1.5rem" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: "rgba(255,255,255,0.5)", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
 
         {submitted ? (
@@ -782,7 +872,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
               <span style={{ color: C.blue, fontSize: 20 }}>✓</span>
             </div>
             <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: C.white, fontSize: "1.7rem", fontWeight: 500, margin: "0 0 0.75rem" }}>Request Received</h3>
-            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.9rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300, lineHeight: 1.7 }}>Someone from Refined Rentals will be in touch shortly with your quote.</p>
+            <p style={{ color: "#c2cad8", fontSize: "0.9rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300, lineHeight: 1.7 }}>Someone from Refined Rentals will be in touch shortly with your quote.</p>
             <button onClick={onClose} style={{ marginTop: "1.5rem", background: "none", border: `1px solid ${C.blue}`, color: C.blue, padding: "10px 28px", borderRadius: 1, cursor: "pointer", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Close</button>
           </div>
         ) : (
@@ -808,14 +898,14 @@ function QuoteModal({ preselected, onClose, onSend }) {
             {/* Delivery info */}
             <div style={{ background: "rgba(33,150,196,0.07)", border: "1px solid rgba(33,150,196,0.18)", borderRadius: 2, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "flex-start" }}>
               <span style={{ color: C.blue, fontSize: 14, flexShrink: 0, marginTop: 1 }}>ℹ</span>
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.55)", fontSize: "0.78rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>
+              <p className="rr-note-text" style={{ margin: 0, color: "#c2cad8", fontSize: "0.78rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>
                 Free delivery in Maseru within a 10 km radius from the Main Circle.
               </p>
             </div>
 
             {/* Event duration */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Event Duration</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 8, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Event Duration</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                 {[["single","Single Day"],["overnight","Overnight"],["multiple","Multiple Days"]].map(([val,label]) => (
                   <button key={val} onClick={() => setForm(f => ({...f,duration:val,date:"",startDate:"",endDate:""}))} style={{ background: form.duration === val ? "rgba(33,150,196,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${form.duration === val ? C.blue : "rgba(255,255,255,0.09)"}`, borderRadius: 2, padding: "9px 8px", cursor: "pointer", color: form.duration === val ? C.white : "rgba(255,255,255,0.45)", fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: "0.8rem", fontWeight: form.duration === val ? 600 : 300, transition: "all 0.2s" }}>{label}</button>
@@ -823,18 +913,18 @@ function QuoteModal({ preselected, onClose, onSend }) {
               </div>
               {(form.duration === "single" || form.duration === "overnight") && (
                 <div>
-                  <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>{form.duration === "overnight" ? "Event Date (collection next morning)" : "Event Date"}</label>
+                  <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>{form.duration === "overnight" ? "Event Date (collection next morning)" : "Event Date"}</label>
                   <input type="date" value={form.date} onChange={e => setForm(f => ({...f,date:e.target.value}))} onFocus={fi} onBlur={fo} style={iSm} />
                 </div>
               )}
               {form.duration === "multiple" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Start Date</label>
+                    <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Start Date</label>
                     <input type="date" value={form.startDate} onChange={e => setForm(f => ({...f,startDate:e.target.value}))} onFocus={fi} onBlur={fo} style={iSm} />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>End Date</label>
+                    <label style={{ display: "block", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>End Date</label>
                     <input type="date" value={form.endDate} min={form.startDate} onChange={e => setForm(f => ({...f,endDate:e.target.value}))} onFocus={fi} onBlur={fo} style={iSm} />
                   </div>
                 </div>
@@ -843,7 +933,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
 
             {/* Services */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 8, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Services Required</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 8, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Services Required</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {KNOWN_SERVICES.map(s => {
                   const activeItem = form.services.find(x => x.name === s);
@@ -860,7 +950,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
                         {/* Qty input — only when active */}
                         {active && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Qty</span>
+                            <span style={{ fontSize: 10, color: "rgba(194,202,216,0.7)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Qty</span>
                             <input
                               type="number" min="1" max="99"
                               value={activeItem.qty}
@@ -901,17 +991,17 @@ function QuoteModal({ preselected, onClose, onSend }) {
                     </div>
                   ))}
                 </div>
-                <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Sans', system-ui, sans-serif", fontStyle: "italic", lineHeight: 1.6 }}>* Capacities are estimates and may vary depending on your spacing preference.</p>
+                <p className="rr-note-text" style={{ margin: 0, fontSize: 10.5, color: "#c2cad8", fontFamily: "'DM Sans', system-ui, sans-serif", fontStyle: "italic", lineHeight: 1.6 }}>* Capacities are estimates and may vary depending on your spacing preference.</p>
               </div>
             )}
 
             {/* Other */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Something Else in Mind?</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(194,202,216,0.7)", marginBottom: 6, fontFamily: "'DM Sans', system-ui, sans-serif" }}>Something Else in Mind?</div>
               <input type="text" placeholder="Describe what you need..." value={form.other} onChange={e => setForm(f => ({...f,other:e.target.value}))} onFocus={fi} onBlur={fo} style={{...iSm, marginBottom: 8}} />
               <div style={{ background: "rgba(33,150,196,0.07)", border: "1px solid rgba(33,150,196,0.15)", borderRadius: 1, padding: "9px 12px", display: "flex", gap: 9, alignItems: "flex-start" }}>
                 <span style={{ color: C.blue, fontSize: 12, flexShrink: 0, marginTop: 1 }}>ℹ</span>
-                <p style={{ margin: 0, color: "rgba(255,255,255,0.38)", fontSize: "0.78rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>We welcome enquiries for items not on our standard list. Please note that <strong style={{ color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>we will only provide a quote for services we are able to supply.</strong> We will let you know if we cannot accommodate a specific request.</p>
+                <p className="rr-note-text" style={{ margin: 0, color: "#c2cad8", fontSize: "0.78rem", lineHeight: 1.65, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>We welcome enquiries for items not on our standard list. Please note that <strong style={{ color: C.white, fontWeight: 500 }}>we will only provide a quote for services we are able to supply.</strong> We will let you know if we cannot accommodate a specific request.</p>
               </div>
             </div>
 
@@ -920,7 +1010,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
             <button onClick={handleSubmit} disabled={submitting} style={{ width: "100%", background: submitting ? "rgba(33,150,196,0.45)" : C.blue, border: "none", borderRadius: 1, color: C.white, cursor: submitting ? "wait" : "pointer", padding: "15px", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
               {submitting ? "Sending..." : "Submit Quote Request"}
             </button>
-            <p style={{ textAlign: "center", marginTop: 12, marginBottom: 0, color: "rgba(255,255,255,0.18)", fontSize: "0.75rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>We typically respond within one business day.</p>
+            <p className="rr-note-text" style={{ textAlign: "center", marginTop: 12, marginBottom: 0, color: "rgba(194,202,216,0.7)", fontSize: "0.75rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>We typically respond within one business day.</p>
           </>
         )}
       </div>
@@ -950,6 +1040,16 @@ export default function App() {
       ::-webkit-scrollbar { width: 5px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(33,150,196,0.25); border-radius: 3px; }
+
+      /* ─── Mobile responsiveness (375px–430px target) ─────────────── */
+      @media(max-width:600px){
+        #services, #about, #gallery, #contact {
+          padding-top: 3rem !important;
+          padding-bottom: 3rem !important;
+        }
+        .rr-note-text { font-size: 14px !important; }
+        .rr-modal-card { padding: 1.25rem !important; }
+      }
     `;
     document.head.appendChild(style);
 
