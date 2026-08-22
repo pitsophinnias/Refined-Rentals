@@ -117,7 +117,7 @@ export default function GalleryAdmin() {
         C={C} F={F}
         category="contact"
         title="Contact Section Images"
-        description="Appears in the image grid next to the contact form. Add as many as you like — the grid grows to fit."
+        description="Appears in the image grid next to the contact form. Add as many as you like, the grid grows to fit."
         acceptHint="JPG, PNG supported"
         accept="image/*"
         items={byCategory(items, "contact")}

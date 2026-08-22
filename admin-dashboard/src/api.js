@@ -19,7 +19,10 @@ export function clearToken() {
 }
 
 /* ── Core fetch ──────────────────────────────────────────────── */
-async function apiFetch(path, opts = {}, authenticated = true, silentAuth = false) {
+// timeoutMs is optional — omit it to keep the original "wait forever" fetch
+// behavior for existing callers. Pass it for requests that need to survive
+// a slow Render cold start without hanging indefinitely (e.g. login).
+async function apiFetch(path, opts = {}, authenticated = true, silentAuth = false, timeoutMs = null) {
   const headers = { "Content-Type": "application/json" };
 
   if (authenticated) {
@@ -27,15 +30,29 @@ async function apiFetch(path, opts = {}, authenticated = true, silentAuth = fals
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { ...headers, ...opts.headers },
-    ...opts,
-  });
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { ...headers, ...opts.headers },
+      ...(controller ? { signal: controller.signal } : {}),
+      ...opts,
+    });
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error("TIMEOUT");
+    throw new Error("NETWORK_ERROR");
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
   if (res.status === 401) {
-    // silentAuth = true means "just tell me I'm not logged in, don't reload"
-    // Used for /me checks on mount so we don't get into a reload loop
-    if (!silentAuth) {
+    // Only force a reload when we were relying on a stored token and it
+    // turned out to be stale/invalid. A fresh login attempt (authenticated
+    // = false) with wrong credentials should just throw so the caller can
+    // show an error — not blow away the page before it gets the chance to.
+    if (authenticated && !silentAuth) {
       clearToken();
       window.location.reload();
       return;
@@ -82,11 +99,20 @@ async function apiFetchMultipart(path, formData) {
 
 /* ── Auth ────────────────────────────────────────────────────── */
 export const auth = {
+  // 60s timeout — the backend is on Render's free tier and can take
+  // 30-60s to wake from a cold start on the first request.
   login:  (email, password) =>
-    apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }, false),
+    apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }, false, false, 60000),
   logout: () =>
     apiFetch("/auth/logout", { method: "POST" }),
   me:     () => apiFetch("/auth/me", {}, true, true), // silent — 401 throws, no reload
+};
+
+/* ── Health ──────────────────────────────────────────────────── */
+// Fire-and-forget ping used to wake a sleeping Render backend as early as
+// possible (e.g. on the login page mounting), before the user submits.
+export const health = {
+  ping: () => apiFetch("/health", {}, false, false, 60000),
 };
 
 /* ── Quote requests ──────────────────────────────────────────── */
@@ -100,6 +126,9 @@ export const requests = {
     apiFetch(`/requests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id)       =>
     apiFetch(`/requests/${id}`, { method: "DELETE" }),
+  // Admin manually entering a request on behalf of a WhatsApp/phone client.
+  createManual: (data) =>
+    apiFetch("/requests/manual", { method: "POST", body: JSON.stringify(data) }),
 };
 
 /* ── Gallery ─────────────────────────────────────────────────── */

@@ -61,6 +61,12 @@ const SCHEMA = `
     notes          TEXT         NOT NULL DEFAULT ''
   );
 
+  -- Distinguishes customer-website submissions from requests an admin enters
+  -- manually on behalf of a client who contacted via WhatsApp/call.
+  ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'website';
+  -- Manual entries may not have a customer email on hand.
+  ALTER TABLE quote_requests ALTER COLUMN email DROP NOT NULL;
+
   CREATE TABLE IF NOT EXISTS gallery (
     id            SERIAL PRIMARY KEY,
     filename      TEXT         NOT NULL,

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Read(//c/Users/phinn/AppData/Local/Temp/claude/c--Users-phinn-Documents-Refined-Rentals/5b962633-cd78-4887-8fe3-030679a88bf9/scratchpad/**)",
+      "Bash(node -e \"try{require.resolve\\('sharp'\\); console.log\\('sharp available'\\)}catch\\(e\\){console.log\\('no sharp'\\)}\")",
+      "Bash(magick -version)",
+      "Bash(python3 -c \"import PIL; print\\(PIL.__version__\\)\")",
+      "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('has playwright'\\)}catch\\(e\\){console.log\\('no playwright'\\)}\")",
+      "Bash(npx --yes vite build)",
+      "Bash(npm ls *)",
+      "Bash(node -e \"console.log\\(process.platform\\)\")",
+      "Bash(npx --yes -p playwright playwright --version)",
+      "Bash(npm install *)"
+    ]
+  }
+}

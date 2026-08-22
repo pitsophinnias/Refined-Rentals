@@ -140,7 +140,7 @@ function EventCalendar({ requests, onSelectId, C }) {
                     const marginLeft  = r._spanMid || r._spanLast  ? "-6px" : 0;
                     const marginRight = r._spanMid || r._spanFirst && !r._spanLast ? "-7px" : 0;
                     return (
-                      <div key={`${r.id}-${ei}`} onClick={() => onSelectId(r.id)} title={`${r.name} — ${r.event}`}
+                      <div key={`${r.id}-${ei}`} onClick={() => onSelectId(r.id)} title={`${r.name}: ${r.event}`}
                         style={{
                           background: color, borderRadius,
                           padding: "2px 5px", marginBottom: 2,
