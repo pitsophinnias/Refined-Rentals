@@ -324,7 +324,7 @@ export default function ReplyModal({ request, reviseReason, onClose, onQuoteSent
     ? `\n\nPlease note: we are unable to provide "${declinedItems[0].description}". Reason: ${declinedItems[0].declineReason}. Full details are in the attached PDF.`
     : "";
 
-  const emailSubject = encodeURIComponent(`Your Quote from Refined Rentals — ${request.event}, ${fmtDate(request.date || request.startDate)}`);
+  const emailSubject = encodeURIComponent(`Your Quote from Refined Rentals: ${request.event}, ${fmtDate(request.date || request.startDate)}`);
   const emailBodyRaw =
 `Dear ${request.name.split(" ")[0]},
 
@@ -433,7 +433,7 @@ Feel free to reply here or call us if you have any questions. 🙏
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:`1px solid rgba(255,255,255,0.06)`,background:"rgba(0,0,0,0.15)"}}>
               <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:customDecision==="pending"?"#e8a020":customDecision==="included"?"#27a86e":C.danger}}/>
               <span style={{fontSize:9,letterSpacing:"0.22em",textTransform:"uppercase",fontFamily:F.body,fontWeight:700,color:customDecision==="pending"?"#e8a020":customDecision==="included"?"#27a86e":C.danger}}>
-                {customDecision==="pending"&&"⚠ Custom Request — Action Required"}
+                {customDecision==="pending"&&"⚠ Custom Request: Action Required"}
                 {customDecision==="included"&&"✓ Custom Item Included in Quote"}
                 {customDecision==="declined"&&"✕ Custom Item Declined"}
               </span>
@@ -455,7 +455,7 @@ Feel free to reply here or call us if you have any questions. 🙏
                   <button onClick={includeCustom} style={{background:"rgba(39,168,110,0.12)",border:"1px solid rgba(39,168,110,0.35)",color:"#27a86e",cursor:"pointer",padding:"9px 18px",borderRadius:2,fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body,transition:"all 0.2s"}}
                     onMouseEnter={e=>{e.currentTarget.style.background="rgba(39,168,110,0.2)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background="rgba(39,168,110,0.12)";}}
-                  >✓ Yes, we can provide this — include in quote</button>
+                  >✓ Yes, we can provide this: include in quote</button>
                   <button onClick={()=>setShowDeclineInput(true)} style={{background:"rgba(217,79,79,0.1)",border:"1px solid rgba(217,79,79,0.3)",color:C.danger,cursor:"pointer",padding:"9px 18px",borderRadius:2,fontSize:11,letterSpacing:"0.16em",textTransform:"uppercase",fontWeight:600,fontFamily:F.body,transition:"all 0.2s"}}
                     onMouseEnter={e=>{e.currentTarget.style.background="rgba(217,79,79,0.18)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background="rgba(217,79,79,0.1)";}}
@@ -479,7 +479,7 @@ Feel free to reply here or call us if you have any questions. 🙏
               {customDecision==="included" && (
                 <div>
                   <p style={{margin:"0 0 8px",color:"#27a86e",fontSize:"0.83rem",fontFamily:F.body,fontWeight:300}}>
-                    Item added below. <strong style={{fontWeight:600}}>Enter a clean item name</strong> in the description field — the customer's original wording will not appear on the quote.
+                    Item added below. <strong style={{fontWeight:600}}>Enter a clean item name</strong> in the description field, since the customer's original wording will not appear on the quote.
                   </p>
                   <div style={{fontSize:"0.78rem",color:C.textDim,fontFamily:F.body,fontWeight:300,fontStyle:"italic",lineHeight:1.5}}>
                     Customer wrote: "{request.other}"
@@ -576,7 +576,7 @@ Feel free to reply here or call us if you have any questions. 🙏
               <div>
                 <div style={{fontFamily:F.body,fontSize:"0.88rem",color:C.textPrimary,fontWeight:500,marginBottom:3}}>{filename}</div>
                 <div style={{fontFamily:F.body,fontSize:11,color:C.textDim,fontWeight:300}}>
-                  {pdfReady?`✓ PDF ready${declinedItems.length>0?" · includes declined items section":""}  — download or respond below`:"Click generate to build the quote PDF"}
+                  {pdfReady?`✓ PDF ready${declinedItems.length>0?" · includes declined items section":""}, download or respond below`:"Click generate to build the quote PDF"}
                 </div>
               </div>
               <div style={{display:"flex",gap:8}}>
@@ -652,7 +652,7 @@ Feel free to reply here or call us if you have any questions. 🙏
                       </a>
                     </div>
                   )}
-                  <p style={{margin:"8px 0 0",color:C.textDim,fontSize:11,fontFamily:F.body,fontWeight:300}}>Open each channel above, attach the PDF, send — then confirm below.</p>
+                  <p style={{margin:"8px 0 0",color:C.textDim,fontSize:11,fontFamily:F.body,fontWeight:300}}>Open each channel above, attach the PDF, send, then confirm below.</p>
                 </div>
               )}
 
@@ -662,7 +662,7 @@ Feel free to reply here or call us if you have any questions. 🙏
                     onMouseEnter={e=>{if(!sending)e.currentTarget.style.background=C.blueLight;}}
                     onMouseLeave={e=>{if(!sending)e.currentTarget.style.background=C.blue;}}
                   >
-                    {sending?<><Spinner/>Saving…</>:<><SendIcon/>Quote Sent — Mark as Quoted</>}
+                    {sending?<><Spinner/>Saving…</>:<><SendIcon/>Quote Sent: Mark as Quoted</>}
                   </button>
                 </div>
               )}

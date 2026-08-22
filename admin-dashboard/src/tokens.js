@@ -57,7 +57,7 @@ export function statusToken(status, C) {
 }
 
 export function fmtDate(iso) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });

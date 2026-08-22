@@ -247,7 +247,7 @@ export default function Announcements() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ color: "#e8a020", fontSize: 14 }}>⚠</span>
                       <span style={{ fontFamily: F.body, fontSize: C.fontSize, color: "#e8a020", fontWeight: 600 }}>
-                        Expiring soon — {fmtCountdown(ms)}
+                        Expiring soon: {fmtCountdown(ms)}
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -281,7 +281,7 @@ export default function Announcements() {
                       <p style={{ margin: "0 0 8px", color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, lineHeight: 1.6 }}>{item.content}</p>
                       <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body }}>
                         {new Date(item.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                        {" — "}
+                        {" - "}
                         {new Date(item.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                       </div>
                     </div>
