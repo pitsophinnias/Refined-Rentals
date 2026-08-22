@@ -142,7 +142,7 @@ function TabGeneral({ C }) {
             </span>
           </div>
         </Row>
-        {[["Database","PostgreSQL 18.1 (local)","Supabase migration planned"],["Auth","JWT — sessionStorage","httpOnly cookies on production"],["File Storage","Local — /backend/uploads","Supabase Storage planned"],["Email Sending","Not yet configured","Phase 5 — EmailJS or Resend"]].map(([l,v,h]) => (
+        {[["Database","PostgreSQL 18.1 (local)","Supabase migration planned"],["Auth","JWT via sessionStorage","httpOnly cookies on production"],["File Storage","Local: /backend/uploads","Supabase Storage planned"],["Email Sending","Not yet configured","Phase 5: EmailJS or Resend"]].map(([l,v,h]) => (
           <Row key={l} label={l} hint={h} C={C}><span style={{ fontFamily:F.body, fontSize:C.fontSize, color:C.textSecondary, fontWeight:300 }}>{v}</span></Row>
         ))}
       </Card>
@@ -236,11 +236,11 @@ function TabUsers({ currentAdminId, C }) {
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <label style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary}}>Role:</label>
                   <select value={newRole} onChange={e=>setNewRole(e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:2,padding:"7px 12px",color:C.textPrimary,fontFamily:F.body,fontSize:C.fontSizeSm,cursor:"pointer",outline:"none"}}>
-                    <option value="ADMIN">Admin — full access</option>
-                    <option value="MANAGER">Manager — operational access, no user management</option>
-                    <option value="FINANCE">Finance — quotes and pricing only</option>
-                    <option value="STAFF">Staff — view, review and notes only</option>
-                    <option value="VIEWER">Viewer — read only</option>
+                    <option value="ADMIN">Admin: full access</option>
+                    <option value="MANAGER">Manager: operational access, no user management</option>
+                    <option value="FINANCE">Finance: quotes and pricing only</option>
+                    <option value="STAFF">Staff: view, review and notes only</option>
+                    <option value="VIEWER">Viewer: read only</option>
                   </select>
                 </div>
                 <div style={{display:"flex",gap:8}}>
@@ -258,11 +258,11 @@ function TabUsers({ currentAdminId, C }) {
       </Card>
       <Card C={C} title="Role Permissions">
         {[
-          ["ADMIN",   "Full access — including user management and system settings"],
-          ["MANAGER", "Full operational access — quotes, gallery, announcements, activity log"],
-          ["FINANCE", "Quote and pricing focused — build, send, revise and close quotes"],
-          ["STAFF",   "Frontline — view requests, set In Review, add internal notes"],
-          ["VIEWER",  "Read only — cannot make any changes"],
+          ["ADMIN",   "Full access, including user management and system settings"],
+          ["MANAGER", "Full operational access: quotes, gallery, announcements, activity log"],
+          ["FINANCE", "Quote and pricing focused: build, send, revise and close quotes"],
+          ["STAFF",   "Frontline: view requests, set In Review, add internal notes"],
+          ["VIEWER",  "Read only: cannot make any changes"],
         ].map(([role, desc]) => (
           <Row key={role} label={<RoleBadge role={role} C={C}/>} C={C}>
             <span style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,fontWeight:300,maxWidth:400,textAlign:"right"}}>{desc}</span>
@@ -417,7 +417,7 @@ function TabActivityLog({ C }) {
           {log.map(entry=>(
             <div key={entry.id} style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"10px 0",borderBottom:`1px solid ${C.border}`,alignItems:"center"}}>
               <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textDim}}>{fmtDate(entry.created_at)}</div>
-              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.admin_email||"—"}</div>
+              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.admin_email||"-"}</div>
               <div><ActionBadge action={entry.action} C={C}/></div>
               <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textSecondary,fontWeight:300}}>
                 {entry.entity_id&&<span style={{color:C.blue,marginRight:6}}>{entry.entity_id}</span>}

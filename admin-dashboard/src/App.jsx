@@ -130,6 +130,11 @@ function Shell() {
     }
   };
 
+  const handleRequestCreated = (request) => {
+    setRequests(prev => [request, ...prev]);
+    setSelectedId(request.id);
+  };
+
   const handleSignOut = async () => {
     try { await authApi.logout(); } catch {}
     clearToken();
@@ -160,7 +165,7 @@ function Shell() {
         <main style={{ flex: 1, overflowY: "auto", minHeight: "100vh" }}>
           <TopBar page={page} />
           {page === "dashboard"     && <Dashboard requests={requests} setPage={setPage} setSelectedId={handleSelectId} />}
-          {page === "requests"      && !selectedRequest && <Requests requests={requests} setSelectedId={setSelectedId} />}
+          {page === "requests"      && !selectedRequest && <Requests requests={requests} setSelectedId={setSelectedId} onRequestCreated={handleRequestCreated} />}
           {page === "requests"      && selectedRequest  && <RequestDetail request={selectedRequest} onBack={handleBack} onUpdate={updateRequest} />}
           {page === "gallery"       && <GalleryAdmin />}
           {page === "announcements" && <Announcements />}

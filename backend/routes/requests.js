@@ -136,6 +136,97 @@ router.post("/", async (req, res) => {
   }
 });
 
+/* ── POST /api/requests/manual — admin creates on behalf of a client
+   who contacted via WhatsApp/call (not the customer-facing form) ──── */
+router.post("/manual", requireAuth, async (req, res) => {
+  // Same roles that can move a request into review: ADMIN, MANAGER, STAFF.
+  // FINANCE and VIEWER are denied.
+  if (!await can(pool, req.admin.id, "review")) {
+    return res.status(403).json({ error: "Your role cannot create manual requests" });
+  }
+
+  const {
+    name, phone, email, event, location,
+    duration, date, startDate, endDate,
+    services, tentSize, tentConfig,
+    other, message,
+  } = req.body;
+
+  // Required fields — email is optional for manual entries (walk-in/phone
+  // clients don't always have one on hand), unlike the customer-site form.
+  if (!name?.trim() || !phone?.trim()) {
+    return res.status(400).json({ error: "Customer name and phone are required" });
+  }
+  if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+  if (!event?.trim()) {
+    return res.status(400).json({ error: "Event name is required" });
+  }
+  if (!location?.trim()) {
+    return res.status(400).json({ error: "Delivery address is required" });
+  }
+
+  const validDurations = ["single", "overnight", "multiple"];
+  if (!duration || !validDurations.includes(duration)) {
+    return res.status(400).json({ error: "Invalid duration value" });
+  }
+  if (duration === "multiple") {
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "Start and end date are required" });
+    }
+  } else if (!date) {
+    return res.status(400).json({ error: "Event date is required" });
+  }
+
+  if (!Array.isArray(services) || services.length === 0) {
+    return res.status(400).json({ error: "At least one service is required" });
+  }
+
+  try {
+    const { rows: existing } = await pool.query("SELECT id FROM quote_requests");
+    const id = nextId(existing);
+
+    const { rows } = await pool.query(
+      `INSERT INTO quote_requests
+         (id, name, phone, email, event, location,
+          duration, date, start_date, end_date,
+          services, tent_size, tent_config, other, message, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       RETURNING *`,
+      [
+        id,
+        name.trim(),
+        phone.trim(),
+        email?.trim().toLowerCase() || null,
+        event.trim(),
+        location.trim(),
+        duration,
+        date       || null,
+        startDate  || null,
+        endDate    || null,
+        JSON.stringify(services || []),
+        tentSize   || null,
+        tentConfig || null,
+        other?.trim()   || null,
+        message?.trim() || null,
+        "manual",
+      ]
+    );
+
+    await logAction(
+      req.admin.id, req.admin.email,
+      "MANUAL_REQUEST_CREATED", id,
+      `Created manually for ${name.trim()}`
+    );
+
+    res.status(201).json({ request: rows[0] });
+  } catch (err) {
+    console.error("Create manual request error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 /* ── GET /api/requests — list (admin) ───────────────────────── */
 router.get("/", requireAuth, async (req, res) => {
   const { status, search, sort = "submitted_at", order = "desc" } = req.query;

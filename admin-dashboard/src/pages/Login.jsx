@@ -4,9 +4,9 @@
  * Replace with Supabase Auth when backend is live.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
-import { auth as authApi } from "../api.js";
+import { auth as authApi, health as healthApi } from "../api.js";
 
 export default function Login({ onLogin }) {
   const { C, F } = useTheme();
@@ -14,23 +14,48 @@ export default function Login({ onLogin }) {
   const [email, setEmail]   = useState("");
   const [pass, setPass]     = useState("");
   const [error, setError]   = useState("");
+  const [canRetry, setCanRetry] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [waking, setWaking] = useState(true);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Ping the backend as soon as the login page mounts — on Render's free
+  // tier a sleeping backend takes 30-60s to wake, so start that clock
+  // immediately instead of waiting for the user to submit the form.
+  useEffect(() => {
+    let cancelled = false;
+    healthApi.ping()
+      .catch(() => {}) // best-effort — the login request has its own error handling
+      .finally(() => { if (!cancelled) setWaking(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const attemptLogin = useCallback(async () => {
     setError("");
+    setCanRetry(false);
     setLoading(true);
     try {
       const data = await authApi.login(email, pass);
       onLogin(data.token, data.admin.email);
     } catch (err) {
-      setError(err.message === "Invalid credentials"
-        ? "Incorrect email or password. Please try again."
-        : "Unable to connect to server. Make sure the backend is running.");
+      if (err.message === "Invalid credentials") {
+        setError("Incorrect email or password.");
+        setCanRetry(false);
+      } else if (err.message === "TIMEOUT" || err.message === "NETWORK_ERROR") {
+        setError("Server is starting up, please try again in a moment.");
+        setCanRetry(true);
+      } else {
+        setError("Something went wrong. Please try again.");
+        setCanRetry(true);
+      }
     } finally {
       setLoading(false);
     }
+  }, [email, pass, onLogin]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    attemptLogin();
   };
 
   const inputStyle = {
@@ -90,8 +115,24 @@ export default function Login({ onLogin }) {
         }}>
           <h2 style={{
             fontFamily: F.display, fontSize: "1.3rem", fontWeight: 500,
-            color: C.textPrimary, margin: "0 0 1.75rem",
+            color: C.textPrimary, margin: waking ? "0 0 0.6rem" : "0 0 1.75rem",
           }}>Sign in to continue</h2>
+
+          {waking && (
+            <p style={{
+              display: "flex", alignItems: "center", gap: 6,
+              fontSize: "0.78rem", color: C.textDim,
+              fontFamily: F.body, fontWeight: 300,
+              margin: "0 0 1.15rem",
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: C.blue, flexShrink: 0,
+                animation: "rr-pulse 1.2s ease-in-out infinite",
+              }} />
+              Connecting to server…
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
@@ -142,9 +183,27 @@ export default function Login({ onLogin }) {
               <div style={{
                 background: "rgba(217,79,79,0.1)", border: "1px solid rgba(217,79,79,0.25)",
                 borderRadius: 2, padding: "9px 12px",
-                color: "#d94f4f", fontSize: "0.82rem",
-                fontFamily: F.body, fontWeight: 300,
-              }}>{error}</div>
+                display: "flex", flexDirection: "column", gap: 8,
+              }}>
+                <span style={{
+                  color: "#d94f4f", fontSize: "0.82rem",
+                  fontFamily: F.body, fontWeight: 300,
+                }}>{error}</span>
+                {canRetry && (
+                  <button
+                    type="button" onClick={attemptLogin} disabled={loading}
+                    style={{
+                      alignSelf: "flex-start",
+                      background: "none", border: "1px solid rgba(217,79,79,0.4)",
+                      borderRadius: 2, color: "#d94f4f",
+                      cursor: loading ? "wait" : "pointer",
+                      padding: "6px 14px", fontSize: 10,
+                      letterSpacing: "0.14em", textTransform: "uppercase",
+                      fontWeight: 600, fontFamily: F.body,
+                    }}
+                  >Try Again</button>
+                )}
+              </div>
             )}
 
             <button
@@ -167,7 +226,7 @@ export default function Login({ onLogin }) {
             </button>
           </form>
 
-
+          <style>{`@keyframes rr-pulse { 0%, 100% { opacity: 0.35 } 50% { opacity: 1 } }`}</style>
         </div>
 
         <p style={{
