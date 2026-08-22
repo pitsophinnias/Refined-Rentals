@@ -420,7 +420,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                     {request.quote_data.declinedItems.map((d,i)=>(
                       <div key={i} style={{ marginBottom:4 }}>
                         <span style={{ color:C.textSecondary, fontSize:"0.83rem", fontFamily:F.body }}>{d.description}</span>
-                        <span style={{ color:C.textDim, fontSize:11, fontFamily:F.body }}> — {d.declineReason}</span>
+                        <span style={{ color:C.textDim, fontSize:11, fontFamily:F.body }}>: {d.declineReason}</span>
                       </div>
                     ))}
                   </div>
@@ -586,7 +586,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
               <button onClick={()=>setShowClose(true)} style={{ marginTop:10, width:"100%", background:"none", border:`1px dashed ${C.border}`, color:C.textDim, cursor:"pointer", padding:"9px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontFamily:F.body, fontWeight:500, transition:"all 0.2s" }}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=C.danger;e.currentTarget.style.color=C.danger;}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.textDim;}}
-              >Close early — accept or reject</button>
+              >Close early: accept or reject</button>
             )}
           </Card>
 

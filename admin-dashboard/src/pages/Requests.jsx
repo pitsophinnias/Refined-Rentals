@@ -6,16 +6,20 @@
 import { useState } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
 import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
+import { usePermissions } from "../usePermissions.js";
 import StatusBadge from "../components/StatusBadge.jsx";
+import NewRequestModal from "../components/NewRequestModal.jsx";
 
 const FILTERS = ["ALL", "NEW", "REVIEW", "QUOTED", "CLOSED"];
 
-export default function Requests({ requests, setSelectedId }) {
+export default function Requests({ requests, setSelectedId, onRequestCreated }) {
   const { C, F } = useTheme();
+  const { can } = usePermissions();
 
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState("newest"); // newest | oldest | event_date
+  const [showNewModal, setShowNewModal] = useState(false);
 
   const filtered = requests
     .filter(r => filter === "ALL" || r.status === filter)
@@ -46,14 +50,43 @@ export default function Requests({ requests, setSelectedId }) {
     <div style={{ padding: "2rem 2.5rem", maxWidth: 1100 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>
-          Manage
+      <div style={{ marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>
+            Manage
+          </div>
+          <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>
+            Quote Requests
+          </h1>
         </div>
-        <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>
-          Quote Requests
-        </h1>
+
+        {can("review") && (
+          <button
+            onClick={() => setShowNewModal(true)}
+            style={{
+              background: C.blue, border: "none", borderRadius: 2,
+              color: C.white, cursor: "pointer",
+              padding: "10px 18px", fontSize: 11,
+              letterSpacing: "0.16em", textTransform: "uppercase",
+              fontWeight: 600, fontFamily: F.body,
+              transition: "background 0.25s", flexShrink: 0,
+              marginTop: 2,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = C.blueLight}
+            onMouseLeave={e => e.currentTarget.style.background = C.blue}
+          >+ New Request</button>
+        )}
       </div>
+
+      {showNewModal && (
+        <NewRequestModal
+          onClose={() => setShowNewModal(false)}
+          onCreated={(request) => {
+            setShowNewModal(false);
+            onRequestCreated(request);
+          }}
+        />
+      )}
 
       {/* Filters + Search + Sort */}
       <div style={{ display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
@@ -177,7 +210,21 @@ export default function Requests({ requests, setSelectedId }) {
 
               {/* Client */}
               <div>
-                <div style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary, marginBottom: 2 }}>{r.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                  <span style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary }}>{r.name}</span>
+                  {r.source === "manual" && (
+                    <span title="Entered manually: WhatsApp / Call" style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      background: "rgba(232,160,32,0.12)", color: "#d4880a",
+                      padding: "1px 7px", borderRadius: 8,
+                      fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                      fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap",
+                    }}>
+                      <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#d4880a" }} />
+                      Manual
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.email}</div>
               </div>
 
@@ -202,7 +249,7 @@ export default function Requests({ requests, setSelectedId }) {
                   }
                   // Single or overnight
                   const d = r.date || r.start_date;
-                  return d ? fmtDate(d) : <span style={{ color: C.textDim }}>—</span>;
+                  return d ? fmtDate(d) : <span style={{ color: C.textDim }}>-</span>;
                 })()}
               </div>
 
@@ -216,7 +263,7 @@ export default function Requests({ requests, setSelectedId }) {
                       return null;
                     })
                     .filter(Boolean);
-                  if (svcs.length === 0) return <span style={{ color: C.textDim }}>—</span>;
+                  if (svcs.length === 0) return <span style={{ color: C.textDim }}>-</span>;
                   return (
                     <>
                       {svcs.slice(0, 2).join(", ")}

@@ -91,7 +91,7 @@ const SERVICES = [
     tag: "Premium Facility",
     subtitle: "VIP Mobile Toilets",
     title: "Comfort is Part of the Experience",
-    description: "Fully flushable, spotlessly maintained, and fitted with modern amenities. Our mobile VIP units handle a detail most planners overlook — and your guests will notice the difference.",
+    description: "Fully flushable, spotlessly maintained, and fitted with modern amenities. Our mobile VIP units handle a detail most planners overlook, and your guests will notice the difference.",
     icon: (
       <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 38, height: 38 }}>
         <rect x="13" y="7" width="30" height="42" rx="3" stroke="currentColor" strokeWidth="2"/>
@@ -1033,7 +1033,7 @@ function QuoteModal({ preselected, onClose, onSend }) {
                     </div>
                   ))}
                 </div>
-                <p className="rr-note-text" style={{ margin: 0, fontSize: 10.5, color: "#c2cad8", fontFamily: "'DM Sans', system-ui, sans-serif", fontStyle: "italic", lineHeight: 1.6 }}>* Capacities are estimates and may vary depending on your spacing preference.</p>
+                <p className="rr-note-text" style={{ margin: 0, fontSize: 10.5, color: C.slateLight, fontFamily: "'DM Sans', system-ui, sans-serif", fontStyle: "italic", lineHeight: 1.6 }}>Capacity figures are estimates only and indicate how many guests the tent can accommodate. Chairs and tables are not included in the tent rental. If you require chairs, tables, or other furniture, please add them as a special request and availability will be confirmed in your quote.</p>
               </div>
             )}
 

@@ -29,11 +29,11 @@ export const ROLE_LABELS = {
 };
 
 export const ROLE_DESCRIPTIONS = {
-  ADMIN:   "Full access — including user management and system settings",
-  MANAGER: "Full operational access — quotes, gallery, announcements, activity log",
-  FINANCE: "Quote and pricing focused — can build, send, revise and close quotes",
-  STAFF:   "Frontline — can view requests, set In Review, and add internal notes",
-  VIEWER:  "Read only — cannot make any changes",
+  ADMIN:   "Full access, including user management and system settings",
+  MANAGER: "Full operational access: quotes, gallery, announcements, activity log",
+  FINANCE: "Quote and pricing focused: can build, send, revise and close quotes",
+  STAFF:   "Frontline: can view requests, set In Review, and add internal notes",
+  VIEWER:  "Read only: cannot make any changes",
 };
 
 export const ALL_ROLES = ["ADMIN", "MANAGER", "FINANCE", "STAFF", "VIEWER"];
