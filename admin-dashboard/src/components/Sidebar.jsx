@@ -68,7 +68,7 @@ export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail
             >
               {active && <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: 2, borderRadius: 2, background: C.blue }} />}
               {item.icon}
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
               {badge > 0 && (
                 <span style={{ background: item.id === "announcements" ? "#e8a020" : C.blue, color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10 }}>{badge}</span>
               )}
@@ -78,10 +78,10 @@ export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: "1rem 1.5rem", borderTop: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, lineHeight: 1.5 }}>
-          <div style={{ color: C.textSecondary, fontWeight: 500, marginBottom: 3 }}>{adminEmail || "Admin"}</div>
-          <span style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: role === "ADMIN" ? C.blueDim : "rgba(232,160,32,0.1)", color: role === "ADMIN" ? C.blue : "#e8a020" }}>
+      <div style={{ padding: "1rem 1.5rem", borderTop: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+        <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, lineHeight: 1.5, minWidth: 0 }}>
+          <div title={adminEmail || "Admin"} style={{ color: C.textSecondary, fontWeight: 500, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{adminEmail || "Admin"}</div>
+          <span style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: role === "ADMIN" ? C.blueDim : "rgba(232,160,32,0.1)", color: role === "ADMIN" ? C.blue : "#e8a020", display: "inline-block" }}>
             {roleLabel}
           </span>
         </div>
