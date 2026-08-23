@@ -186,7 +186,7 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
         {/* Table header */}
         <div className="rr-req-table-head" style={{
           display: "grid",
-          gridTemplateColumns: "80px 1fr 140px 140px 120px 90px",
+          gridTemplateColumns: "80px minmax(0,1fr) 140px 140px 120px 90px",
           padding: "10px 1.25rem",
           borderBottom: `1px solid ${C.border}`,
           background: "rgba(255,255,255,0.02)",
@@ -212,7 +212,7 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
                 onClick={() => setSelectedId(r.id)}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "80px 1fr 140px 140px 120px 90px",
+                  gridTemplateColumns: "80px minmax(0,1fr) 140px 140px 120px 90px",
                   padding: "0.9rem 1.25rem",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   cursor: "pointer", alignItems: "center",
@@ -225,29 +225,29 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
                 <div style={{ fontSize: 11, color: C.blue, fontFamily: F.body, fontWeight: 600 }}>{r.id}</div>
 
                 {/* Client */}
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                    <span style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary }}>{r.name}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.name}</span>
                     {r.source === "manual" && (
                       <span title="Entered manually: WhatsApp / Call" style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
                         background: "rgba(232,160,32,0.12)", color: "#d4880a",
                         padding: "1px 7px", borderRadius: 8,
                         fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
-                        fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap",
+                        fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap", flexShrink: 0,
                       }}>
                         <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#d4880a" }} />
                         Manual
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.email}</div>
+                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.email}</div>
                 </div>
 
                 {/* Event */}
-                <div>
-                  <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>{r.event}</div>
-                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.location}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.event}</div>
+                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.location}</div>
                 </div>
 
                 {/* Event date */}
@@ -292,7 +292,7 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-                    <span style={{ fontFamily: F.body, fontSize: "0.92rem", fontWeight: 600, color: C.textPrimary }}>{r.name}</span>
+                    <span style={{ fontFamily: F.body, fontSize: "0.92rem", fontWeight: 600, color: C.textPrimary, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.name}</span>
                     {r.source === "manual" && (
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
@@ -308,7 +308,7 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
                   </div>
                   <StatusBadge status={r.status} size="sm" />
                 </div>
-                <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>{r.event}</div>
+                <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary, overflowWrap: "break-word", wordBreak: "break-word" }}>{r.event}</div>
                 <div style={{ fontFamily: F.body, fontSize: 14, color: C.textDim }}>{renderDate(r)}</div>
               </div>
             </div>
