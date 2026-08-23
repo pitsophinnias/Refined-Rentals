@@ -190,13 +190,13 @@ function TabUsers({ currentAdminId, C }) {
             {users.map(u=>(
               <div key={u.id} style={{padding:"1rem 0",borderBottom:`1px solid ${C.border}`}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0,flex:"1 1 260px"}}>
                     <div style={{width:36,height:36,borderRadius:"50%",background:C.blueDim,border:`1px solid ${C.borderBlue}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F.display,fontSize:14,fontWeight:600,color:C.blue,flexShrink:0}}>
                       {u.email[0].toUpperCase()}
                     </div>
-                    <div>
-                      <div style={{fontFamily:F.body,fontSize:C.fontSize,fontWeight:500,color:C.textPrimary,display:"flex",alignItems:"center",gap:8}}>
-                        {u.email}{u.id===currentAdminId&&<span style={{fontSize:9,color:C.textDim,fontFamily:F.body}}>(you)</span>}
+                    <div style={{minWidth:0}}>
+                      <div style={{fontFamily:F.body,fontSize:C.fontSize,fontWeight:500,color:C.textPrimary,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",overflowWrap:"break-word",wordBreak:"break-word"}}>
+                        <span style={{overflowWrap:"break-word",wordBreak:"break-word"}}>{u.email}</span>{u.id===currentAdminId&&<span style={{fontSize:9,color:C.textDim,fontFamily:F.body,flexShrink:0}}>(you)</span>}
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
                         <RoleBadge role={u.role} C={C}/>
@@ -378,6 +378,7 @@ const ACTION_LABELS = {
   QUOTE_SENT:"Quote Built & Sent",CREATE_USER:"Created User",DELETE_USER:"Removed User",CHANGE_ROLE:"Changed Role",
   RESET_PASSWORD:"Reset Password",CHANGE_OWN_PASSWORD:"Changed Own Password",
   ADD_NOTIFICATION_EMAIL:"Added Notification Email",REMOVE_NOTIFICATION_EMAIL:"Removed Notification Email",
+  REQUEST_DELETED:"Request Deleted",MANUAL_REQUEST_CREATED:"Manual Request Created",
 };
 
 function ActionBadge({ action, C }) {
@@ -386,7 +387,10 @@ function ActionBadge({ action, C }) {
   const isNotif=action.includes("NOTIFICATION");
   const color=isQuote?C.blue:isUser?"#e8a020":isNotif?"#1e9160":C.textDim;
   const bg=isQuote?C.blueDim:isUser?"rgba(232,160,32,0.1)":isNotif?"rgba(30,145,96,0.1)":C.border;
-  return <span style={{fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase",fontFamily:F.body,fontWeight:700,padding:"2px 8px",borderRadius:10,background:bg,color,whiteSpace:"nowrap"}}>{ACTION_LABELS[action]||action}</span>;
+  // No nowrap: a handful of action labels ("Removed Notification Email" etc.)
+  // are wider than the column, so the pill wraps onto 2-3 lines instead of
+  // overflowing into the Detail column next to it.
+  return <span style={{fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase",fontFamily:F.body,fontWeight:700,padding:"2px 8px",borderRadius:10,background:bg,color,display:"inline-block",maxWidth:"100%",boxSizing:"border-box",lineHeight:1.5,overflowWrap:"break-word",wordBreak:"break-word"}}>{ACTION_LABELS[action]||action}</span>;
 }
 
 function TabActivityLog({ C }) {
@@ -409,17 +413,17 @@ function TabActivityLog({ C }) {
       {loading?<p style={{padding:"1rem 0",color:C.textDim,fontFamily:F.body,fontSize:C.fontSize}}>Loading...</p>
       :log.length===0?<p style={{padding:"1rem 0",color:C.textDim,fontFamily:F.body,fontSize:C.fontSize}}>No activity recorded yet.</p>:(
         <>
-          <div className="rr-activity-head" style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.border}`,marginBottom:2}}>
+          <div className="rr-activity-head" style={{display:"grid",gridTemplateColumns:"minmax(0,0.8fr) minmax(0,1fr) 130px minmax(0,1.8fr)",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.border}`,marginBottom:2}}>
             {["Time","User","Action","Detail"].map(h=>(
               <div key={h} style={{fontSize:8.5,letterSpacing:"0.18em",textTransform:"uppercase",color:C.textDim,fontFamily:F.body}}>{h}</div>
             ))}
           </div>
           {log.map(entry=>(
-            <div key={entry.id} className="rr-activity-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"10px 0",borderBottom:`1px solid ${C.border}`,alignItems:"center"}}>
-              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textDim}}>{fmtDate(entry.created_at)}</div>
-              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.admin_email||"-"}</div>
+            <div key={entry.id} className="rr-activity-grid" style={{display:"grid",gridTemplateColumns:"minmax(0,0.8fr) minmax(0,1fr) 130px minmax(0,1.8fr)",gap:8,padding:"10px 0",borderBottom:`1px solid ${C.border}`,alignItems:"start"}}>
+              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textDim,paddingTop:2}}>{fmtDate(entry.created_at)}</div>
+              <div title={entry.admin_email||"-"} style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingTop:2}}>{entry.admin_email||"-"}</div>
               <div><ActionBadge action={entry.action} C={C}/></div>
-              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textSecondary,fontWeight:300}}>
+              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textSecondary,fontWeight:300,overflowWrap:"break-word",wordBreak:"break-word",minWidth:0}}>
                 {entry.entity_id&&<span style={{color:C.blue,marginRight:6}}>{entry.entity_id}</span>}
                 {entry.detail}
               </div>
