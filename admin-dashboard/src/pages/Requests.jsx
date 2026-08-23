@@ -46,16 +46,30 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
     return acc;
   }, {});
 
+  const renderDate = (r) => {
+    if (r.start_date && r.end_date && r.start_date !== r.end_date) {
+      return (
+        <>
+          {fmtDate(r.start_date)}
+          <br/>
+          <span style={{ fontSize: 11, color: C.textDim }}>– {fmtDate(r.end_date)}</span>
+        </>
+      );
+    }
+    const d = r.date || r.start_date;
+    return d ? fmtDate(d) : <span style={{ color: C.textDim }}>-</span>;
+  };
+
   return (
-    <div style={{ padding: "2rem 2.5rem", maxWidth: 1100 }}>
+    <div className="rr-page" style={{ padding: "2rem 2.5rem", maxWidth: 1100 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+      <div style={{ marginBottom: "1.75rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>
             Manage
           </div>
-          <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>
+          <h1 className="rr-page-title" style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>
             Quote Requests
           </h1>
         </div>
@@ -170,7 +184,7 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
         borderRadius: 3, overflow: "hidden",
       }}>
         {/* Table header */}
-        <div style={{
+        <div className="rr-req-table-head" style={{
           display: "grid",
           gridTemplateColumns: "80px 1fr 140px 140px 120px 90px",
           padding: "10px 1.25rem",
@@ -191,90 +205,112 @@ export default function Requests({ requests, setSelectedId, onRequestCreated }) 
           </div>
         ) : (
           filtered.map((r, i) => (
-            <div
-              key={r.id}
-              onClick={() => setSelectedId(r.id)}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "80px 1fr 140px 140px 120px 90px",
-                padding: "0.9rem 1.25rem",
-                borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
-                cursor: "pointer", alignItems: "center",
-                transition: "background 0.18s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              {/* Ref */}
-              <div style={{ fontSize: 11, color: C.blue, fontFamily: F.body, fontWeight: 600 }}>{r.id}</div>
+            <div key={r.id}>
+              {/* Desktop table row */}
+              <div
+                className="rr-req-row-desktop"
+                onClick={() => setSelectedId(r.id)}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "80px 1fr 140px 140px 120px 90px",
+                  padding: "0.9rem 1.25rem",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  cursor: "pointer", alignItems: "center",
+                  transition: "background 0.18s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.025)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                {/* Ref */}
+                <div style={{ fontSize: 11, color: C.blue, fontFamily: F.body, fontWeight: 600 }}>{r.id}</div>
 
-              {/* Client */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                  <span style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary }}>{r.name}</span>
-                  {r.source === "manual" && (
-                    <span title="Entered manually: WhatsApp / Call" style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      background: "rgba(232,160,32,0.12)", color: "#d4880a",
-                      padding: "1px 7px", borderRadius: 8,
-                      fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
-                      fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap",
-                    }}>
-                      <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#d4880a" }} />
-                      Manual
-                    </span>
-                  )}
+                {/* Client */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                    <span style={{ fontFamily: F.body, fontSize: "0.88rem", fontWeight: 500, color: C.textPrimary }}>{r.name}</span>
+                    {r.source === "manual" && (
+                      <span title="Entered manually: WhatsApp / Call" style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        background: "rgba(232,160,32,0.12)", color: "#d4880a",
+                        padding: "1px 7px", borderRadius: 8,
+                        fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                        fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap",
+                      }}>
+                        <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#d4880a" }} />
+                        Manual
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.email}</div>
                 </div>
-                <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.email}</div>
-              </div>
 
-              {/* Event */}
-              <div>
-                <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>{r.event}</div>
-                <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.location}</div>
-              </div>
+                {/* Event */}
+                <div>
+                  <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>{r.event}</div>
+                  <div style={{ fontSize: 11, color: C.textDim, fontFamily: F.body }}>{r.location}</div>
+                </div>
 
-              {/* Event date */}
-              <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>
-                {(() => {
-                  // Multiple days
-                  if (r.start_date && r.end_date && r.start_date !== r.end_date) {
+                {/* Event date */}
+                <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>
+                  {renderDate(r)}
+                </div>
+
+                {/* Services */}
+                <div style={{ fontFamily: F.body, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+                  {(() => {
+                    const svcs = (r.services || [])
+                      .map(s => {
+                        if (typeof s === "string") return s;
+                        if (s && typeof s === "object" && s.name) return s.name;
+                        return null;
+                      })
+                      .filter(Boolean);
+                    if (svcs.length === 0) return <span style={{ color: C.textDim }}>-</span>;
                     return (
                       <>
-                        {fmtDate(r.start_date)}
-                        <br/>
-                        <span style={{ fontSize: 11, color: C.textDim }}>– {fmtDate(r.end_date)}</span>
+                        {svcs.slice(0, 2).join(", ")}
+                        {svcs.length > 2 && <span style={{ color: C.blue }}> +{svcs.length - 2}</span>}
                       </>
                     );
-                  }
-                  // Single or overnight
-                  const d = r.date || r.start_date;
-                  return d ? fmtDate(d) : <span style={{ color: C.textDim }}>-</span>;
-                })()}
+                  })()}
+                </div>
+
+                {/* Status */}
+                <StatusBadge status={r.status} size="sm" />
               </div>
 
-              {/* Services */}
-              <div style={{ fontFamily: F.body, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
-                {(() => {
-                  const svcs = (r.services || [])
-                    .map(s => {
-                      if (typeof s === "string") return s;
-                      if (s && typeof s === "object" && s.name) return s.name;
-                      return null;
-                    })
-                    .filter(Boolean);
-                  if (svcs.length === 0) return <span style={{ color: C.textDim }}>-</span>;
-                  return (
-                    <>
-                      {svcs.slice(0, 2).join(", ")}
-                      {svcs.length > 2 && <span style={{ color: C.blue }}> +{svcs.length - 2}</span>}
-                    </>
-                  );
-                })()}
+              {/* Mobile card — name, event, date, status only */}
+              <div
+                className="rr-req-row-mobile"
+                onClick={() => setSelectedId(r.id)}
+                style={{
+                  display: "none", flexDirection: "column", gap: 6,
+                  padding: "0.95rem 1.1rem",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+                    <span style={{ fontFamily: F.body, fontSize: "0.92rem", fontWeight: 600, color: C.textPrimary }}>{r.name}</span>
+                    {r.source === "manual" && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        background: "rgba(232,160,32,0.12)", color: "#d4880a",
+                        padding: "1px 7px", borderRadius: 8,
+                        fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+                        fontWeight: 700, fontFamily: F.body, whiteSpace: "nowrap", flexShrink: 0,
+                      }}>
+                        <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#d4880a" }} />
+                        Manual
+                      </span>
+                    )}
+                  </div>
+                  <StatusBadge status={r.status} size="sm" />
+                </div>
+                <div style={{ fontFamily: F.body, fontSize: "0.85rem", color: C.textSecondary }}>{r.event}</div>
+                <div style={{ fontFamily: F.body, fontSize: 14, color: C.textDim }}>{renderDate(r)}</div>
               </div>
-
-              {/* Status */}
-              <StatusBadge status={r.status} size="sm" />
             </div>
           ))
         )}

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { api } from "./api.js";
+import { api, API_ORIGIN } from "./api.js";
 
 /* ─── Design tokens ──────────────────────────────────────────── */
 const C = {
@@ -572,7 +572,7 @@ function Gallery() {
       .then(data => {
         if (data.gallery?.length > 0) {
           setSlides(data.gallery.map(item => ({
-            src:   `http://localhost:3001${item.url}`,
+            src:   `${API_ORIGIN}${item.url}`,
             label: item.label || "",
             type:  item.type,
           })));

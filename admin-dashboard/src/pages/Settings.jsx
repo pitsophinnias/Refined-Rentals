@@ -9,7 +9,7 @@ import { F } from "../tokens.js";
 import { auth as authApi } from "../api.js";
 import { usePermissions, ALL_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS } from "../usePermissions.js";
 
-const BASE = "http://localhost:3001/api";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 async function settingsFetch(path, opts = {}) {
   const token = sessionStorage.getItem("rr-admin-token");
@@ -29,7 +29,7 @@ async function settingsFetch(path, opts = {}) {
 
 function Row({ label, hint, children, C }) {
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, padding:"1rem 0", borderBottom:`1px solid ${C.border}`, flexWrap:"wrap" }}>
+    <div className="rr-settings-row" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, padding:"1rem 0", borderBottom:`1px solid ${C.border}`, flexWrap:"wrap" }}>
       <div style={{ minWidth:180 }}>
         <div style={{ fontFamily:F.body, fontSize:C.fontSize, fontWeight:500, color:C.textPrimary, marginBottom:hint?3:0 }}>{label}</div>
         {hint && <div style={{ fontFamily:F.body, fontSize:C.fontSizeSm-1, color:C.textDim, fontWeight:300 }}>{hint}</div>}
@@ -43,11 +43,11 @@ function Card({ title, children, C }) {
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:3, marginBottom:18, transition:"background 0.3s" }}>
       {title && (
-        <div style={{ padding:"1rem 1.5rem", borderBottom:`1px solid ${C.border}` }}>
+        <div className="rr-card-pad" style={{ padding:"1rem 1.5rem", borderBottom:`1px solid ${C.border}` }}>
           <h3 style={{ fontFamily:F.display, fontSize:"1.05rem", fontWeight:500, color:C.textPrimary, margin:0 }}>{title}</h3>
         </div>
       )}
-      <div style={{ padding:"0 1.5rem 1rem" }}>{children}</div>
+      <div className="rr-card-pad" style={{ padding:"0 1.5rem 1rem" }}>{children}</div>
     </div>
   );
 }
@@ -110,7 +110,7 @@ function TabGeneral({ C }) {
   const { fontSize, changeFontSize } = useTheme();
   const [apiStatus, setApiStatus] = useState("checking");
   useEffect(() => {
-    fetch("http://localhost:3001/api/health")
+    fetch(`${BASE}/health`)
       .then(r => r.ok?setApiStatus("ok"):setApiStatus("error"))
       .catch(() => setApiStatus("error"));
   }, []);
@@ -134,7 +134,7 @@ function TabGeneral({ C }) {
         </Row>
       </Card>
       <Card C={C} title="System Status">
-        <Row label="API Server" hint="localhost:3001" C={C}>
+        <Row label="API Server" hint={BASE.replace(/\/api\/?$/, "")} C={C}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
             <div style={{ width:8, height:8, borderRadius:"50%", background:apiStatus==="ok"?"#1e9160":apiStatus==="error"?C.danger:"#e8a020" }} />
             <span style={{ fontFamily:F.body, fontSize:C.fontSizeSm, color:apiStatus==="ok"?"#1e9160":apiStatus==="error"?C.danger:"#e8a020", fontWeight:500 }}>
@@ -409,13 +409,13 @@ function TabActivityLog({ C }) {
       {loading?<p style={{padding:"1rem 0",color:C.textDim,fontFamily:F.body,fontSize:C.fontSize}}>Loading...</p>
       :log.length===0?<p style={{padding:"1rem 0",color:C.textDim,fontFamily:F.body,fontSize:C.fontSize}}>No activity recorded yet.</p>:(
         <>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.border}`,marginBottom:2}}>
+          <div className="rr-activity-head" style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.border}`,marginBottom:2}}>
             {["Time","User","Action","Detail"].map(h=>(
               <div key={h} style={{fontSize:8.5,letterSpacing:"0.18em",textTransform:"uppercase",color:C.textDim,fontFamily:F.body}}>{h}</div>
             ))}
           </div>
           {log.map(entry=>(
-            <div key={entry.id} style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"10px 0",borderBottom:`1px solid ${C.border}`,alignItems:"center"}}>
+            <div key={entry.id} className="rr-activity-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 120px 1fr",gap:8,padding:"10px 0",borderBottom:`1px solid ${C.border}`,alignItems:"center"}}>
               <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textDim}}>{fmtDate(entry.created_at)}</div>
               <div style={{fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textSecondary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.admin_email||"-"}</div>
               <div><ActionBadge action={entry.action} C={C}/></div>
@@ -453,10 +453,10 @@ export default function Settings() {
   },[]);
 
   return (
-    <div style={{padding:"2rem 2.5rem",maxWidth:820}}>
+    <div className="rr-page" style={{padding:"2rem 2.5rem",maxWidth:820}}>
       <div style={{marginBottom:"1.75rem"}}>
         <div style={{fontSize:9.5,letterSpacing:"0.22em",textTransform:"uppercase",color:C.blue,fontFamily:F.body,marginBottom:6}}>Configuration</div>
-        <h1 style={{fontFamily:F.display,fontSize:"2rem",fontWeight:500,color:C.textPrimary,margin:0}}>Settings</h1>
+        <h1 className="rr-page-title" style={{fontFamily:F.display,fontSize:"2rem",fontWeight:500,color:C.textPrimary,margin:0}}>Settings</h1>
       </div>
       <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.border}`,marginBottom:"1.75rem",overflowX:"auto"}}>
         {TABS.map(t=>(

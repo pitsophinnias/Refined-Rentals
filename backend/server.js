@@ -25,15 +25,18 @@ if (JWT_SECRET.length < 32) {
 }
 
 /* ── Helmet — security headers ───────────────────────────────── */
+// This server only ever returns JSON (plus static files under /uploads), so
+// a strict default CSP costs nothing. It does NOT govern the separately
+// hosted React frontends — their own CSP must be set where they're served
+// from (Render static site headers / Cloudflare), not here.
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }, // allow frontend to load uploaded images
-  contentSecurityPolicy: false, // handled by frontend framework
+  frameguard: { action: "deny" }, // this API is never meant to be framed
 }));
 
 /* ── CORS — only allow known origins ─────────────────────────── */
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
+  ...(isProd ? [] : ["http://localhost:5173", "http://localhost:5174"]),
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : []),
 ];
 
@@ -59,11 +62,11 @@ app.use(cookieParser());
 /* ── Rate limiting — global ───────────────────────────────────── */
 const globalLimiter = rateLimit({
   windowMs:        15 * 60 * 1000, // 15 minutes
-  max:             500,             // 500 requests per window per IP
+  max:             100,             // 100 requests per window per IP
   standardHeaders: true,
   legacyHeaders:   false,
   message:         { error: "Too many requests, please try again later." },
-  skip: (req) => req.path === "/api/auth/me", // session checks don't count
+  skip: (req) => req.path === "/api/auth/me" || req.path === "/api/health",
 });
 app.use(globalLimiter);
 
@@ -125,7 +128,7 @@ async function start() {
     console.log(`\n✓ Refined Rentals API running on http://localhost:${PORT}`);
     console.log(`  Environment:   ${isProd ? "production" : "development"}`);
     console.log(`  Login limit:   5 attempts / 15 min per IP`);
-    console.log(`  Global limit:  200 req / 15 min per IP\n`);
+    console.log(`  Global limit:  100 req / 15 min per IP\n`);
   });
 }
 

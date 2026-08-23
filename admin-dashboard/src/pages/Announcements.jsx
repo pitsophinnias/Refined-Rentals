@@ -146,13 +146,13 @@ export default function Announcements() {
   const displayed = tab === "active" ? active : archive;
 
   return (
-    <div style={{ padding: "2rem 2.5rem", maxWidth: 900 }}>
+    <div className="rr-page" style={{ padding: "2rem 2.5rem", maxWidth: 900 }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>Manage</div>
-          <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Announcements</h1>
+          <h1 className="rr-page-title" style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Announcements</h1>
           <p style={{ color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, margin: "0.35rem 0 0" }}>
             Active announcements appear as a banner on the customer site.
           </p>
@@ -196,7 +196,7 @@ export default function Announcements() {
             </div>
 
             {/* Date range */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div className="rr-nrm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
                 <label style={{ display: "block", fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, marginBottom: 5 }}>Show from *</label>
                 <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} onFocus={fi} onBlur={fo} style={iSm} />
@@ -268,8 +268,8 @@ export default function Announcements() {
                 )}
 
                 {/* Card */}
-                <div style={{ background: C.surface, border: `1px solid ${expiring ? "rgba(232,160,32,0.3)" : C.border}`, borderRadius: expiring ? "0 0 2px 2px" : 2, padding: "1.25rem 1.5rem" }}>
-                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div className="rr-card-pad" style={{ background: C.surface, border: `1px solid ${expiring ? "rgba(232,160,32,0.3)" : C.border}`, borderRadius: expiring ? "0 0 2px 2px" : 2, padding: "1.25rem 1.5rem" }}>
+                  <div className="rr-ann-card" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     {item.image && <img src={item.image} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 2, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
@@ -287,7 +287,7 @@ export default function Announcements() {
                     </div>
 
                     {/* Actions */}
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <div className="rr-ann-actions" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                       {item.active ? (
                         <button onClick={() => removeItem(item.id)} style={{ background: "rgba(217,79,79,0.08)", border: "1px solid rgba(217,79,79,0.2)", borderRadius: 2, color: C.danger, cursor: "pointer", padding: "7px 14px", fontFamily: F.body, fontSize: C.fontSizeSm, fontWeight: 500, transition: "all 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.background = "rgba(217,79,79,0.15)"}

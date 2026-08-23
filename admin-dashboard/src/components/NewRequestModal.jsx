@@ -165,7 +165,7 @@ export default function NewRequestModal({ onClose, onCreated }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(2,8,22,0.92)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "1.5rem 1rem", overflowY: "auto", animation: "rrnFadeIn 0.2s ease" }}
     >
-      <div style={{ background: C.surfaceUp, border: `1px solid ${C.borderBlue}`, borderRadius: 3, width: "100%", maxWidth: 640, padding: "2rem", position: "relative", animation: "rrnSlideUp 0.25s cubic-bezier(.25,.46,.45,.94)", marginBottom: "1.5rem" }}>
+      <div className="rr-modal-card" style={{ background: C.surfaceUp, border: `1px solid ${C.borderBlue}`, borderRadius: 3, width: "100%", maxWidth: 640, padding: "2rem", position: "relative", animation: "rrnSlideUp 0.25s cubic-bezier(.25,.46,.45,.94)", marginBottom: "1.5rem" }}>
 
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: `1px solid ${C.border}`, borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: C.textDim, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
 
@@ -182,7 +182,7 @@ export default function NewRequestModal({ onClose, onCreated }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Contact */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="rr-nrm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Customer Name *" error={errors.name}>
               <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Full name" onFocus={fi} onBlur={fo("name")} style={{ ...iSm, ...errStyle("name") }} />
@@ -198,7 +198,7 @@ export default function NewRequestModal({ onClose, onCreated }) {
               placeholder="Optional" onFocus={fi} onBlur={fo("email")} style={{ ...iSm, ...errStyle("email") }} />
           </Field>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="rr-nrm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Event Name *" error={errors.event}>
               <input type="text" value={form.event} onChange={e => setForm(f => ({ ...f, event: e.target.value }))}
                 placeholder="e.g. Wedding" onFocus={fi} onBlur={fo("event")} style={{ ...iSm, ...errStyle("event") }} />
@@ -212,7 +212,7 @@ export default function NewRequestModal({ onClose, onCreated }) {
           {/* Duration */}
           <div>
             <div style={{ fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textDim, fontFamily: F.body, marginBottom: 6 }}>Event Duration *</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
+            <div className="rr-nrm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
               {DURATIONS.map(([val, label]) => (
                 <button key={val} type="button" onClick={() => setForm(f => ({ ...f, duration: val, date: "", startDate: "", endDate: "" }))}
                   style={{
@@ -231,7 +231,7 @@ export default function NewRequestModal({ onClose, onCreated }) {
                   onFocus={fi} onBlur={fo("date")} style={{ ...iSm, ...errStyle("date") }} />
               </Field>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="rr-nrm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <Field label="Start Date *" error={errors.startDate}>
                   <input type="date" min={todayISO()} value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                     onFocus={fi} onBlur={fo("startDate")} style={{ ...iSm, ...errStyle("startDate") }} />
