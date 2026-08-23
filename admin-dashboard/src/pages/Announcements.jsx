@@ -7,6 +7,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
 import { announcements as annApi } from "../api.js";
+import { usePermissions } from "../usePermissions.js";
+import NoPermission from "../components/NoPermission.jsx";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -22,6 +24,7 @@ const EMPTY_FORM = {
 
 export default function Announcements() {
   const { C, F } = useTheme();
+  const { can } = usePermissions();
   const [tab, setTab]           = useState("active");   // "active" | "archive"
   const [items, setItems]       = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -144,6 +147,8 @@ export default function Announcements() {
 
   /* Tab items */
   const displayed = tab === "active" ? active : archive;
+
+  if (!can("announcements")) return <NoPermission />;
 
   return (
     <div className="rr-page" style={{ padding: "2rem 2.5rem", maxWidth: 900 }}>

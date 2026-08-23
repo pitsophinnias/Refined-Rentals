@@ -9,6 +9,8 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
 import { gallery as galleryApi, API_ORIGIN } from "../api.js";
+import { usePermissions } from "../usePermissions.js";
+import NoPermission from "../components/NoPermission.jsx";
 
 function byCategory(items, category) {
   return items
@@ -19,6 +21,7 @@ function byCategory(items, category) {
 
 export default function GalleryAdmin() {
   const { C, F } = useTheme();
+  const { can } = usePermissions();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState({ main: false, contact: false });
 
@@ -27,6 +30,8 @@ export default function GalleryAdmin() {
       .then(data => setItems(data.gallery || []))
       .catch(err => console.error("Gallery load error:", err));
   }, []);
+
+  if (!can("gallery")) return <NoPermission />;
 
   const handleFiles = async (files, category) => {
     setLoading(prev => ({ ...prev, [category]: true }));

@@ -26,6 +26,7 @@ const bcrypt      = require("bcrypt");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField } = require("../lib/validate.js");
+const { can } = require("../lib/roles.js");
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 async function isAdmin(adminId) {
@@ -34,20 +35,6 @@ async function isAdmin(adminId) {
     [adminId]
   );
   return rows.length === 0 || rows[0].role === "ADMIN"; // first user has no role row = ADMIN
-}
-
-// Mirrors the ROLES/can() permission model in routes/requests.js.
-const ROLES = {
-  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications"],
-  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications"],
-  FINANCE: ["view","quote","close","notes","activity","notifications"],
-  STAFF:   ["view","review","notes"],
-  VIEWER:  ["view"],
-};
-async function can(adminId, permission) {
-  const { rows } = await pool.query("SELECT role FROM admin_roles WHERE admin_id = $1", [adminId]);
-  const role = rows.length === 0 ? "ADMIN" : rows[0].role;
-  return (ROLES[role] || ROLES.VIEWER).includes(permission);
 }
 
 async function logAction(pool, adminId, adminEmail, action, entity, entityId, detail) {
@@ -68,6 +55,9 @@ async function logAction(pool, adminId, adminEmail, action, entity, entityId, de
 
 /* GET /api/settings/users */
 router.get("/users", requireAuth, async (req, res) => {
+  if (!await isAdmin(req.admin.id)) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
   try {
     const { rows } = await pool.query(`
       SELECT a.id, a.email, a.created_at,
@@ -86,7 +76,7 @@ router.get("/users", requireAuth, async (req, res) => {
 /* POST /api/settings/users — create new user */
 router.post("/users", requireAuth, async (req, res) => {
   if (!await isAdmin(req.admin.id)) {
-    return res.status(403).json({ error: "Only admins can create users" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const { email, password, role = "VIEWER" } = req.body;
@@ -137,7 +127,7 @@ router.post("/users", requireAuth, async (req, res) => {
 /* PATCH /api/settings/users/:id/role */
 router.patch("/users/:id/role", requireAuth, async (req, res) => {
   if (!await isAdmin(req.admin.id)) {
-    return res.status(403).json({ error: "Only admins can change roles" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const { role } = req.body;
@@ -174,7 +164,7 @@ router.patch("/users/:id/role", requireAuth, async (req, res) => {
 /* PATCH /api/settings/users/:id/password — admin resets another user's password */
 router.patch("/users/:id/password", requireAuth, async (req, res) => {
   if (!await isAdmin(req.admin.id)) {
-    return res.status(403).json({ error: "Only admins can reset passwords" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const { password } = req.body;
@@ -208,7 +198,7 @@ router.patch("/users/:id/password", requireAuth, async (req, res) => {
 /* DELETE /api/settings/users/:id — remove user (can't delete self) */
 router.delete("/users/:id", requireAuth, async (req, res) => {
   if (!await isAdmin(req.admin.id)) {
-    return res.status(403).json({ error: "Only admins can remove users" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const targetId = Number(req.params.id);
@@ -293,7 +283,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
 
 router.post("/notifications", requireAuth, async (req, res) => {
   if (!await can(req.admin.id, "notifications")) {
-    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const { email, label } = req.body;
   if (!email?.trim()) return res.status(400).json({ error: "Email is required" });
@@ -324,7 +314,7 @@ router.post("/notifications", requireAuth, async (req, res) => {
 
 router.patch("/notifications/:id", requireAuth, async (req, res) => {
   if (!await can(req.admin.id, "notifications")) {
-    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const { active } = req.body;
   try {
@@ -341,7 +331,7 @@ router.patch("/notifications/:id", requireAuth, async (req, res) => {
 
 router.delete("/notifications/:id", requireAuth, async (req, res) => {
   if (!await can(req.admin.id, "notifications")) {
-    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   try {
     const { rows } = await pool.query(
@@ -368,7 +358,7 @@ router.delete("/notifications/:id", requireAuth, async (req, res) => {
 
 router.get("/audit", requireAuth, async (req, res) => {
   if (!await can(req.admin.id, "activity")) {
-    return res.status(403).json({ error: "Your role cannot view the audit log" });
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const { admin_id, entity_id, limit = 50, offset = 0 } = req.query;
