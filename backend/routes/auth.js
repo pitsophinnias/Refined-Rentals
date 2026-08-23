@@ -32,14 +32,14 @@ router.post("/login", async (req, res) => {
     const match     = await bcrypt.compare(password, hash);
 
     if (rows.length === 0 || !match) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Incorrect email or password" });
     }
 
     const admin = rows[0];
     const token = jwt.sign(
       { id: admin.id, email: admin.email },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "8h" }
     );
 
     res.json({

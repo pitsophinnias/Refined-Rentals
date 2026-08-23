@@ -12,6 +12,7 @@ const router      = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
+const { cleanField, isValidDate } = require("../lib/validate.js");
 
 async function canManageAnnouncements(pool, adminId) {
   const { rows } = await pool.query("SELECT role FROM admin_roles WHERE admin_id = $1", [adminId]);
@@ -57,10 +58,13 @@ router.post("/", requireAuth, async (req, res) => {
   }
   const { heading, content, image_url, start_date, end_date } = req.body;
 
-  if (!heading || !content || !start_date || !end_date) {
+  if (!heading?.trim() || !content?.trim() || !start_date || !end_date) {
     return res.status(400).json({
       error: "heading, content, start_date and end_date are required",
     });
+  }
+  if (!isValidDate(start_date) || !isValidDate(end_date)) {
+    return res.status(400).json({ error: "start_date and end_date must be valid dates" });
   }
 
   try {
@@ -69,7 +73,7 @@ router.post("/", requireAuth, async (req, res) => {
       `INSERT INTO announcements (id, heading, content, image_url, start_date, end_date)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [id, heading, content, image_url || null, start_date, end_date]
+      [id, cleanField(heading, 200), cleanField(content, 5000), cleanField(image_url, 500), start_date, end_date]
     );
     res.status(201).json({ announcement: rows[0] });
   } catch (err) {
@@ -83,15 +87,26 @@ router.patch("/:id", requireAuth, async (req, res) => {
   if (!await canManageAnnouncements(pool, req.admin.id)) {
     return res.status(403).json({ error: "Your role cannot manage announcements" });
   }
-  const allowed = ["heading", "content", "image_url", "start_date", "end_date", "active"];
-  const updates = [];
-  const values  = [];
+  const allowed  = ["heading", "content", "image_url", "start_date", "end_date", "active"];
+  const textCols = { heading: 200, content: 5000, image_url: 500 };
+  const updates  = [];
+  const values   = [];
+
+  if (req.body.start_date !== undefined && !isValidDate(req.body.start_date)) {
+    return res.status(400).json({ error: "start_date must be a valid date" });
+  }
+  if (req.body.end_date !== undefined && !isValidDate(req.body.end_date)) {
+    return res.status(400).json({ error: "end_date must be a valid date" });
+  }
 
   for (const key of allowed) {
-    if (req.body[key] !== undefined) {
-      values.push(req.body[key]);
-      updates.push(`${key} = $${values.length}`);
+    let val = req.body[key];
+    if (val === undefined) continue;
+    if (key in textCols && typeof val === "string") {
+      val = cleanField(val, textCols[key]) ?? "";
     }
+    values.push(val);
+    updates.push(`${key} = $${values.length}`);
   }
 
   if (updates.length === 0) {

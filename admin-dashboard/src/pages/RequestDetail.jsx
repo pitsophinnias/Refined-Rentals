@@ -53,7 +53,7 @@ function InfoRow({ label, value }) {
 
   if (!value) return null;
   return (
-    <div style={{ display:"flex", gap:16, padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
+    <div className="rr-inforow" style={{ display:"flex", gap:16, padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
       <div style={{ width:110, flexShrink:0, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body, paddingTop:1 }}>{label}</div>
       <div style={{ color:C.textSecondary, fontSize:"0.88rem", fontFamily:F.body, fontWeight:300, flex:1 }}>{value}</div>
     </div>
@@ -89,7 +89,7 @@ function CloseModal({ request, onClose, onConfirm }) {
   return (
     <div onClick={e=>{ if(e.target===overlayEl) onClose(); }} ref={el=>setOverlayEl(el)}
       style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(2,8,22,0.9)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem", animation:"cmFadeIn 0.2s ease" }}>
-      <div style={{ background:C.surfaceUp, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:480, padding:"2rem", position:"relative", animation:"cmSlideUp 0.22s ease" }}>
+      <div className="rr-modal-card" style={{ background:C.surfaceUp, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:480, padding:"2rem", position:"relative", animation:"cmSlideUp 0.22s ease" }}>
         <button onClick={onClose} style={{ position:"absolute", top:14, right:14, background:"none", border:`1px solid ${C.border}`, borderRadius:"50%", width:28, height:28, cursor:"pointer", color:C.textDim, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
 
         <div style={{ fontSize:9, letterSpacing:"0.22em", textTransform:"uppercase", color:C.blue, fontFamily:F.body, fontWeight:600, marginBottom:8 }}>Close Request</div>
@@ -230,7 +230,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
   const hasQuote = Boolean(request.quote_data);
 
   return (
-    <div style={{ padding:"2rem 2.5rem", maxWidth:920 }}>
+    <div className="rr-page" style={{ padding:"2rem 2.5rem", maxWidth:920 }}>
 
       {/* expired timer prompt banner */}
       {showExpiredPrompt && (
@@ -292,7 +292,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
         <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
           {/* QUOTE REPLY button */}
           {!isClosed && can("quote") && (
-            <button onClick={handleReviseClick} style={{ background:C.blue, border:"none", color:C.white, cursor:"pointer", padding:"10px 22px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s", display:"flex", alignItems:"center", gap:7 }}
+            <button className="rr-touch-btn" onClick={handleReviseClick} style={{ background:C.blue, border:"none", color:C.white, cursor:"pointer", padding:"10px 22px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s", display:"flex", alignItems:"center", gap:7 }}
               onMouseEnter={e=>e.currentTarget.style.background=C.blueLight}
               onMouseLeave={e=>e.currentTarget.style.background=C.blue}
             >
@@ -302,7 +302,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           )}
           {/* CLOSE button */}
           {(isQuoted || request.status === "REVIEW") && can("close") && (
-            <button onClick={()=>setShowClose(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, color:C.textSecondary, cursor:"pointer", padding:"10px 18px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}
+            <button className="rr-touch-btn" onClick={()=>setShowClose(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, color:C.textSecondary, cursor:"pointer", padding:"10px 18px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}
               onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.danger; e.currentTarget.style.color=C.danger; }}
               onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.textSecondary; }}
             >Close Request</button>
@@ -376,7 +376,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             {request.other && (
               <div style={{ marginTop:"0.75rem", background:"rgba(232,160,32,0.07)", border:"1px solid rgba(232,160,32,0.2)", borderRadius:2, padding:"10px 12px" }}>
                 <div style={{ fontSize:9, letterSpacing:"0.18em", textTransform:"uppercase", color:"#e8a020", fontFamily:F.body, fontWeight:600, marginBottom:4 }}>Custom Request</div>
-                <p style={{ margin:0, color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, lineHeight:1.65 }}>{request.other}</p>
+                <p className="rr-note-sm" style={{ margin:0, color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, lineHeight:1.65 }}>{request.other}</p>
               </div>
             )}
           </Card>
@@ -393,7 +393,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             <Card title="Quote Sent">
               {/* line items table */}
               <div style={{ marginBottom:"0.75rem" }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"5px 0", borderBottom:`1px solid ${C.border}`, marginBottom:4 }}>
+                <div className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"5px 0", borderBottom:`1px solid ${C.border}`, marginBottom:4 }}>
                   {["Item","Qty","Unit","Total"].map(h=>(
                     <div key={h} style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body }}>{h}</div>
                   ))}
@@ -401,7 +401,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                 {request.quote_data.items.filter(i=>i.description.trim()&&!i._declined).map((item,idx)=>{
                   const total = (Number(item.qty)||1)*(Number(item.unitPrice)||0);
                   return (
-                    <div key={item.id||idx} style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"6px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
+                    <div key={item.id||idx} className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"6px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
                       <div style={{ fontFamily:F.body, fontSize:"0.83rem", color:C.textPrimary }}>
                         {item.description}
                         {item._isOther&&<span style={{ marginLeft:6, fontSize:8.5, color:"#27a86e", background:"rgba(39,168,110,0.1)", padding:"1px 5px", borderRadius:2 }}>Custom</span>}
@@ -444,7 +444,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                         <svg viewBox="0 0 14 14" fill="none" style={{width:11,height:11}}><rect x="1" y="2.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1 4l6 4 6-4" stroke="currentColor" strokeWidth="1.3"/></svg>
                         Email Message Sent
                       </div>
-                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
+                      <pre className="rr-note-sm" style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
                         {request.quote_data.messageEmail}
                       </pre>
                     </div>
@@ -455,7 +455,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                         <svg viewBox="0 0 14 14" fill="none" style={{width:11,height:11}}><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 5C4.5 5 4.5 8.5 7 9.5 9.5 10.5 10 8 10 8L8.5 7.5 7.5 6.5 6.5 7.5C6 7 5.5 6 5.5 5.5L6.5 4.5 5.5 3.5 5 4.5Z" stroke="currentColor" strokeWidth="0.8"/></svg>
                         WhatsApp Message Sent
                       </div>
-                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
+                      <pre className="rr-note-sm" style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>
                         {request.quote_data.messageWA}
                       </pre>
                     </div>
@@ -464,7 +464,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                   {!request.quote_data.channels && request.quote_data.message && (
                     <div style={{ background:"rgba(255,255,255,0.02)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px" }}>
                       <div style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body, marginBottom:6 }}>Message Sent</div>
-                      <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>{request.quote_data.message}</pre>
+                      <pre className="rr-note-sm" style={{ margin:0, color:C.textSecondary, fontSize:"0.78rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:140, overflowY:"auto" }}>{request.quote_data.message}</pre>
                     </div>
                   )}
                 </div>
@@ -557,6 +557,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                 return (
                   <button
                     key={s}
+                    className="rr-touch-btn"
                     onClick={() => clickable ? handleStatusChange("REVIEW") : undefined}
                     style={{
                       display:"flex", alignItems:"center", gap:10,
@@ -597,7 +598,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
               style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,0.03)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px", color:C.textPrimary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, resize:"vertical", outline:"none", transition:"border-color 0.25s", lineHeight:1.65 }}
               onFocus={e=>e.target.style.borderColor=C.blue} onBlur={e=>e.target.style.borderColor=C.border}
             />
-            <button onClick={saveNotes} style={{ marginTop:8, background:"none", border:`1px solid ${notesSaved?"rgba(39,168,110,0.4)":C.border}`, color:notesSaved?"#27a86e":C.textSecondary, borderColor:notesSaved?"rgba(39,168,110,0.4)":C.border, cursor:"pointer", padding:"7px 16px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}>
+            <button className="rr-touch-btn" onClick={saveNotes} style={{ marginTop:8, background:"none", border:`1px solid ${notesSaved?"rgba(39,168,110,0.4)":C.border}`, color:notesSaved?"#27a86e":C.textSecondary, borderColor:notesSaved?"rgba(39,168,110,0.4)":C.border, cursor:"pointer", padding:"7px 16px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}>
               {notesSaved?"✓ Saved":"Save Notes"}
             </button>
           </Card>
@@ -605,7 +606,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           {/* Quote history summary */}
           {request.reply_text && (
             <Card title={`Quote History · ${fmtDate(request.replied_at)}`}>
-              <pre style={{ margin:0, color:C.textSecondary, fontSize:"0.79rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:220, overflowY:"auto" }}>
+              <pre className="rr-note-sm" style={{ margin:0, color:C.textSecondary, fontSize:"0.79rem", fontFamily:F.body, fontWeight:300, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word", maxHeight:220, overflowY:"auto" }}>
                 {request.reply_text}
               </pre>
             </Card>
@@ -616,7 +617,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
       {/* Revision reason modal */}
       {showReviseConfirm && (
         <div style={{ position:"fixed", inset:0, zIndex:250, background:"rgba(2,10,28,0.88)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem" }}>
-          <div style={{ background:C.surface, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:460, padding:"1.75rem" }}>
+          <div className="rr-modal-card" style={{ background:C.surface, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:460, padding:"1.75rem" }}>
             <div style={{ fontFamily:F.display, fontSize:"1.25rem", fontWeight:500, color:C.textPrimary, marginBottom:"0.5rem" }}>Revise Quote</div>
             <p style={{ color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, lineHeight:1.65, margin:"0 0 1.25rem" }}>
               Please provide a reason for revising this quote. This will be recorded alongside the updated quote.
@@ -676,10 +677,10 @@ function Card({ title, children }) {
 
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:3 }}>
-      <div style={{ padding:"1rem 1.5rem", borderBottom:`1px solid ${C.border}` }}>
+      <div className="rr-card-pad" style={{ padding:"1rem 1.5rem", borderBottom:`1px solid ${C.border}` }}>
         <span style={{ fontSize:9.5, letterSpacing:"0.2em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body }}>{title}</span>
       </div>
-      <div style={{ padding:"1rem 1.5rem" }}>{children}</div>
+      <div className="rr-card-pad" style={{ padding:"1rem 1.5rem" }}>{children}</div>
     </div>
   );
 }
