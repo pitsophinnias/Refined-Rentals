@@ -392,7 +392,7 @@ Feel free to reply here or call us if you have any questions. 🙏
       padding:"1.5rem 1rem", overflowY:"auto",
       animation:"rrFadeIn 0.2s ease",
     }}>
-      <div style={{
+      <div className="rr-modal-card" style={{
         background:C.surfaceUp, border:`1px solid ${C.borderBlue}`,
         borderRadius:3, width:"100%", maxWidth:700,
         padding:"2rem", position:"relative",

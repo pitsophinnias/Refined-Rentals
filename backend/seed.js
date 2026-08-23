@@ -37,7 +37,7 @@ async function seed() {
     );
 
     console.log(`✓ Admin created: ${email}`);
-    console.log(`  Password: ${password}`);
+    console.log("  Password: (set via ADMIN_PASSWORD in .env — not printed)");
     console.log("\nYou can now start the server with: npm run dev");
     process.exit(0);
   } catch (err) {

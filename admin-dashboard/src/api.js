@@ -6,6 +6,9 @@
  */
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+// Origin (no /api suffix) — used to build absolute URLs for uploaded assets
+// (e.g. gallery thumbnails), which are served from /uploads, not /api.
+export const API_ORIGIN = BASE.replace(/\/api\/?$/, "");
 
 /* ── Token storage — sessionStorage ─────────────────────────── */
 export function getToken() {

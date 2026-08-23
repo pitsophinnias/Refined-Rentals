@@ -14,7 +14,7 @@ const NAV = [
   { id: "settings",      label: "Settings",         icon: <svg viewBox="0 0 20 20" fill="none" style={{width:17,height:17}}><circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
 ];
 
-export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail }) {
+export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail, mobileOpen = false, onCloseMobile }) {
   const { C, F } = useTheme();
   const { can, role, roleLabel } = usePermissions();
   const newCount = requests.filter(r => r.status === "NEW").length;
@@ -28,11 +28,11 @@ export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail
   } catch(e) {}
 
   return (
-    <aside style={{ width: 220, flexShrink: 0, background: C.sidebarBg, borderRight: `1px solid ${C.sidebarBorder}`, display: "flex", flexDirection: "column", height: "100vh", position: "sticky", top: 0, transition: "background 0.3s, border-color 0.3s" }}>
+    <aside className={`rr-sidebar${mobileOpen ? " rr-sidebar-open" : ""}`} style={{ width: 220, flexShrink: 0, background: C.sidebarBg, borderRight: `1px solid ${C.sidebarBorder}`, display: "flex", flexDirection: "column", height: "100vh", position: "sticky", top: 0, transition: "background 0.3s, border-color 0.3s, transform 0.25s ease" }}>
 
       {/* Logo */}
-      <div style={{ padding: "1.75rem 1.5rem 1.5rem", borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ padding: "1.75rem 1.5rem 1.5rem", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
           <div style={{ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${C.blue}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <span style={{ fontFamily: F.display, fontSize: 13, fontWeight: 600, color: C.blue }}>rr</span>
           </div>
@@ -41,6 +41,13 @@ export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail
             <div style={{ fontSize: 8.5, letterSpacing: "0.2em", textTransform: "uppercase", color: C.textDim, fontFamily: F.body, marginTop: 2 }}>Admin Panel</div>
           </div>
         </div>
+        {/* Close — mobile drawer only */}
+        <button
+          className="rr-sidebar-close"
+          onClick={onCloseMobile}
+          aria-label="Close menu"
+          style={{ display: "none", background: "none", border: `1px solid ${C.border}`, borderRadius: "50%", width: 28, height: 28, cursor: "pointer", flexShrink: 0, alignItems: "center", justifyContent: "center", color: C.textDim, fontSize: 13 }}
+        >✕</button>
       </div>
 
       {/* Navigation */}

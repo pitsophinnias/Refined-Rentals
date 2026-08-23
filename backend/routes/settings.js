@@ -25,6 +25,7 @@ const router      = require("express").Router();
 const bcrypt      = require("bcrypt");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
+const { cleanField } = require("../lib/validate.js");
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 async function isAdmin(adminId) {
@@ -33,6 +34,20 @@ async function isAdmin(adminId) {
     [adminId]
   );
   return rows.length === 0 || rows[0].role === "ADMIN"; // first user has no role row = ADMIN
+}
+
+// Mirrors the ROLES/can() permission model in routes/requests.js.
+const ROLES = {
+  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications"],
+  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications"],
+  FINANCE: ["view","quote","close","notes","activity","notifications"],
+  STAFF:   ["view","review","notes"],
+  VIEWER:  ["view"],
+};
+async function can(adminId, permission) {
+  const { rows } = await pool.query("SELECT role FROM admin_roles WHERE admin_id = $1", [adminId]);
+  const role = rows.length === 0 ? "ADMIN" : rows[0].role;
+  return (ROLES[role] || ROLES.VIEWER).includes(permission);
 }
 
 async function logAction(pool, adminId, adminEmail, action, entity, entityId, detail) {
@@ -277,16 +292,22 @@ router.get("/notifications", requireAuth, async (req, res) => {
 });
 
 router.post("/notifications", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "notifications")) {
+    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+  }
   const { email, label } = req.body;
   if (!email?.trim()) return res.status(400).json({ error: "Email is required" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: "Invalid email address" });
   }
+  if (email.trim().length > 255) {
+    return res.status(400).json({ error: "Email is too long" });
+  }
 
   try {
     const { rows } = await pool.query(
       "INSERT INTO notification_emails (email, label) VALUES ($1, $2) RETURNING *",
-      [email.trim().toLowerCase(), label?.trim() || null]
+      [email.trim().toLowerCase(), cleanField(label, 100)]
     );
 
     await logAction(pool, req.admin.id, req.admin.email,
@@ -302,6 +323,9 @@ router.post("/notifications", requireAuth, async (req, res) => {
 });
 
 router.patch("/notifications/:id", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "notifications")) {
+    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+  }
   const { active } = req.body;
   try {
     const { rows } = await pool.query(
@@ -316,6 +340,9 @@ router.patch("/notifications/:id", requireAuth, async (req, res) => {
 });
 
 router.delete("/notifications/:id", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "notifications")) {
+    return res.status(403).json({ error: "Your role cannot manage notification emails" });
+  }
   try {
     const { rows } = await pool.query(
       "SELECT email FROM notification_emails WHERE id = $1", [req.params.id]
@@ -340,6 +367,10 @@ router.delete("/notifications/:id", requireAuth, async (req, res) => {
 ══════════════════════════════════════════════════════════════ */
 
 router.get("/audit", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "activity")) {
+    return res.status(403).json({ error: "Your role cannot view the audit log" });
+  }
+
   const { admin_id, entity_id, limit = 50, offset = 0 } = req.query;
 
   const conditions = [];
@@ -355,8 +386,10 @@ router.get("/audit", requireAuth, async (req, res) => {
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  values.push(Math.min(Number(limit), 200));
-  values.push(Number(offset));
+  const safeLimit  = Math.min(Math.max(Number(limit)  || 50, 1), 200);
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+  values.push(safeLimit);
+  values.push(safeOffset);
 
   try {
     const { rows } = await pool.query(
