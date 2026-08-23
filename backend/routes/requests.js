@@ -13,6 +13,7 @@ const rateLimit   = require("express-rate-limit");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField, isValidDate, cleanServices } = require("../lib/validate.js");
+const { can } = require("../lib/roles.js");
 
 /* ── Rate limiting — quote submission (public, unauthenticated) ─ */
 const quoteLimiter = rateLimit({
@@ -22,28 +23,6 @@ const quoteLimiter = rateLimit({
   legacyHeaders:   false,
   message:         { error: "Too many quote requests from this IP. Please try again later." },
 });
-
-/* ── Role helpers ────────────────────────────────────────────── */
-const ROLES = {
-  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications"],
-  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications"],
-  FINANCE: ["view","quote","close","notes","activity","notifications"],
-  STAFF:   ["view","review","notes"],
-  VIEWER:  ["view"],
-};
-
-async function getRole(pool, adminId) {
-  const { rows } = await pool.query(
-    "SELECT role FROM admin_roles WHERE admin_id = $1",
-    [adminId]
-  );
-  return rows.length === 0 ? "ADMIN" : rows[0].role;
-}
-
-async function can(pool, adminId, permission) {
-  const role = await getRole(pool, adminId);
-  return (ROLES[role] || ROLES.VIEWER).includes(permission);
-}
 
 /* ── Audit log helper ─────────────────────────────────────────── */
 async function logAction(adminId, adminEmail, action, entityId, detail) {
@@ -162,8 +141,8 @@ router.post("/", quoteLimiter, async (req, res) => {
 router.post("/manual", requireAuth, async (req, res) => {
   // Same roles that can move a request into review: ADMIN, MANAGER, STAFF.
   // FINANCE and VIEWER are denied.
-  if (!await can(pool, req.admin.id, "review")) {
-    return res.status(403).json({ error: "Your role cannot create manual requests" });
+  if (!await can(req.admin.id, "review")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const {
@@ -328,20 +307,25 @@ router.patch("/:id", requireAuth, async (req, res) => {
   const { status, quote_data, closed_reason, notes } = req.body;
 
   // Only ADMIN, MANAGER, FINANCE can build/send quotes
-  if (quote_data !== undefined && !await can(pool, req.admin.id, "quote")) {
-    return res.status(403).json({ error: "Your role cannot build or send quotes" });
+  if (quote_data !== undefined && !await can(req.admin.id, "quote")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   // Only ADMIN, MANAGER, FINANCE can close requests
-  if (closed_reason !== undefined && !await can(pool, req.admin.id, "close")) {
-    return res.status(403).json({ error: "Your role cannot close requests" });
+  if (closed_reason !== undefined && !await can(req.admin.id, "close")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
-  // STAFF and above can set REVIEW; VIEWER cannot
-  if (status === "REVIEW" && !await can(pool, req.admin.id, "review")) {
-    return res.status(403).json({ error: "Your role cannot change request status" });
+  // STAFF and above can set REVIEW; FINANCE and VIEWER cannot
+  if (status === "REVIEW" && !await can(req.admin.id, "review")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
+  // Any other status change (QUOTED, CLOSED, NEW) requires the same access
+  // as building a quote / closing a request — STAFF and VIEWER denied.
+  if (status !== undefined && status !== "REVIEW" && !await can(req.admin.id, "close")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   // Notes — STAFF and above
-  if (notes !== undefined && !await can(pool, req.admin.id, "notes")) {
-    return res.status(403).json({ error: "Your role cannot add notes" });
+  if (notes !== undefined && !await can(req.admin.id, "notes")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
   const allowed   = ["status", "notes", "quote_data", "reply_channels", "quoted_at", "closed_reason", "closed_note"];
@@ -436,8 +420,8 @@ router.delete("/:id", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid request ID format" });
   }
   // Hard delete is irreversible — restrict to the same roles that can close requests.
-  if (!await can(pool, req.admin.id, "close")) {
-    return res.status(403).json({ error: "Your role cannot delete requests" });
+  if (!await can(req.admin.id, "close")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   try {
     const { rowCount } = await pool.query(

@@ -13,12 +13,7 @@ const { v4: uuidv4 } = require("uuid");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField, isValidDate } = require("../lib/validate.js");
-
-async function canManageAnnouncements(pool, adminId) {
-  const { rows } = await pool.query("SELECT role FROM admin_roles WHERE admin_id = $1", [adminId]);
-  const role = rows.length === 0 ? "ADMIN" : rows[0].role;
-  return ["ADMIN","MANAGER"].includes(role);
-}
+const { can } = require("../lib/roles.js");
 
 /* ── GET /api/announcements/active — public ─────────────────── */
 // Must be defined before /:id to avoid "active" being treated as an id
@@ -40,6 +35,9 @@ router.get("/active", async (req, res) => {
 
 /* ── GET /api/announcements — all (admin) ───────────────────── */
 router.get("/", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "announcements")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
   try {
     const { rows } = await pool.query(
       "SELECT * FROM announcements ORDER BY created_at DESC"
@@ -53,8 +51,8 @@ router.get("/", requireAuth, async (req, res) => {
 
 /* ── POST /api/announcements — create (admin) ───────────────── */
 router.post("/", requireAuth, async (req, res) => {
-  if (!await canManageAnnouncements(pool, req.admin.id)) {
-    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  if (!await can(req.admin.id, "announcements")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const { heading, content, image_url, start_date, end_date } = req.body;
 
@@ -84,8 +82,8 @@ router.post("/", requireAuth, async (req, res) => {
 
 /* ── PATCH /api/announcements/:id — update (admin) ──────────── */
 router.patch("/:id", requireAuth, async (req, res) => {
-  if (!await canManageAnnouncements(pool, req.admin.id)) {
-    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  if (!await can(req.admin.id, "announcements")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const allowed  = ["heading", "content", "image_url", "start_date", "end_date", "active"];
   const textCols = { heading: 200, content: 5000, image_url: 500 };
@@ -128,8 +126,8 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
 /* ── DELETE /api/announcements/:id — hard delete (admin) ─────── */
 router.delete("/:id", requireAuth, async (req, res) => {
-  if (!await canManageAnnouncements(pool, req.admin.id)) {
-    return res.status(403).json({ error: "Your role cannot manage announcements" });
+  if (!await can(req.admin.id, "announcements")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   try {
     const { rowCount } = await pool.query(

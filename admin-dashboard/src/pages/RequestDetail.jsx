@@ -583,7 +583,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             </div>
 
             {/* close early shortcut when quoted */}
-            {isQuoted && (
+            {isQuoted && can("close") && (
               <button onClick={()=>setShowClose(true)} style={{ marginTop:10, width:"100%", background:"none", border:`1px dashed ${C.border}`, color:C.textDim, cursor:"pointer", padding:"9px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontFamily:F.body, fontWeight:500, transition:"all 0.2s" }}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=C.danger;e.currentTarget.style.color=C.danger;}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.textDim;}}
@@ -592,16 +592,18 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           </Card>
 
           {/* Internal notes */}
-          <Card title="Internal Notes">
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={5}
-              placeholder="Add private notes (not visible to client)…"
-              style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,0.03)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px", color:C.textPrimary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, resize:"vertical", outline:"none", transition:"border-color 0.25s", lineHeight:1.65 }}
-              onFocus={e=>e.target.style.borderColor=C.blue} onBlur={e=>e.target.style.borderColor=C.border}
-            />
-            <button className="rr-touch-btn" onClick={saveNotes} style={{ marginTop:8, background:"none", border:`1px solid ${notesSaved?"rgba(39,168,110,0.4)":C.border}`, color:notesSaved?"#27a86e":C.textSecondary, borderColor:notesSaved?"rgba(39,168,110,0.4)":C.border, cursor:"pointer", padding:"7px 16px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}>
-              {notesSaved?"✓ Saved":"Save Notes"}
-            </button>
-          </Card>
+          {can("notes") && (
+            <Card title="Internal Notes">
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={5}
+                placeholder="Add private notes (not visible to client)…"
+                style={{ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,0.03)", border:`1px solid ${C.border}`, borderRadius:2, padding:"10px 12px", color:C.textPrimary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, resize:"vertical", outline:"none", transition:"border-color 0.25s", lineHeight:1.65 }}
+                onFocus={e=>e.target.style.borderColor=C.blue} onBlur={e=>e.target.style.borderColor=C.border}
+              />
+              <button className="rr-touch-btn" onClick={saveNotes} style={{ marginTop:8, background:"none", border:`1px solid ${notesSaved?"rgba(39,168,110,0.4)":C.border}`, color:notesSaved?"#27a86e":C.textSecondary, borderColor:notesSaved?"rgba(39,168,110,0.4)":C.border, cursor:"pointer", padding:"7px 16px", borderRadius:2, fontSize:10, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}>
+                {notesSaved?"✓ Saved":"Save Notes"}
+              </button>
+            </Card>
+          )}
 
           {/* Quote history summary */}
           {request.reply_text && (

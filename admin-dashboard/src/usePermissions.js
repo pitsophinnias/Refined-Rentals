@@ -13,10 +13,10 @@ import { auth as authApi } from "./api.js";
 
 /* ── Permission map — mirrors the backend ────────────────────── */
 const ROLE_PERMISSIONS = {
-  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications"],
-  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications"],
-  FINANCE: ["view","quote","close","notes","activity","notifications"],
-  STAFF:   ["view","review","notes"],
+  ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications","settings"],
+  MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications","settings"],
+  FINANCE: ["view","quote","close","notifications"],
+  STAFF:   ["view","review","notes","notifications"],
   VIEWER:  ["view"],
 };
 
