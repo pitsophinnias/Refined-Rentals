@@ -55,7 +55,7 @@ function InfoRow({ label, value }) {
   return (
     <div className="rr-inforow" style={{ display:"flex", gap:16, padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
       <div style={{ width:110, flexShrink:0, fontSize:9.5, letterSpacing:"0.18em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body, paddingTop:1 }}>{label}</div>
-      <div style={{ color:C.textSecondary, fontSize:"0.88rem", fontFamily:F.body, fontWeight:300, flex:1 }}>{value}</div>
+      <div style={{ color:C.textSecondary, fontSize:"0.88rem", fontFamily:F.body, fontWeight:300, flex:1, minWidth:0, overflowWrap:"break-word", wordBreak:"break-word" }}>{value}</div>
     </div>
   );
 }
@@ -88,8 +88,8 @@ function CloseModal({ request, onClose, onConfirm }) {
 
   return (
     <div onClick={e=>{ if(e.target===overlayEl) onClose(); }} ref={el=>setOverlayEl(el)}
-      style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(2,8,22,0.9)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem", animation:"cmFadeIn 0.2s ease" }}>
-      <div className="rr-modal-card" style={{ background:C.surfaceUp, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:480, padding:"2rem", position:"relative", animation:"cmSlideUp 0.22s ease" }}>
+      style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(2,8,22,0.9)", backdropFilter:"blur(6px)", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"1.5rem 1rem", overflowY:"auto", animation:"cmFadeIn 0.2s ease" }}>
+      <div className="rr-modal-card" style={{ background:C.surfaceUp, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:480, padding:"2rem", position:"relative", animation:"cmSlideUp 0.22s ease", marginBottom:"1.5rem" }}>
         <button onClick={onClose} style={{ position:"absolute", top:14, right:14, background:"none", border:`1px solid ${C.border}`, borderRadius:"50%", width:28, height:28, cursor:"pointer", color:C.textDim, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
 
         <div style={{ fontSize:9, letterSpacing:"0.22em", textTransform:"uppercase", color:C.blue, fontFamily:F.body, fontWeight:600, marginBottom:8 }}>Close Request</div>
@@ -393,7 +393,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             <Card title="Quote Sent">
               {/* line items table */}
               <div style={{ marginBottom:"0.75rem" }}>
-                <div className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"5px 0", borderBottom:`1px solid ${C.border}`, marginBottom:4 }}>
+                <div className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) 48px 80px 80px", gap:6, padding:"5px 0", borderBottom:`1px solid ${C.border}`, marginBottom:4 }}>
                   {["Item","Qty","Unit","Total"].map(h=>(
                     <div key={h} style={{ fontSize:8.5, letterSpacing:"0.16em", textTransform:"uppercase", color:C.textDim, fontFamily:F.body }}>{h}</div>
                   ))}
@@ -401,7 +401,7 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
                 {request.quote_data.items.filter(i=>i.description.trim()&&!i._declined).map((item,idx)=>{
                   const total = (Number(item.qty)||1)*(Number(item.unitPrice)||0);
                   return (
-                    <div key={item.id||idx} className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"1fr 48px 80px 80px", gap:6, padding:"6px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
+                    <div key={item.id||idx} className="rr-quote-grid" style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) 48px 80px 80px", gap:6, padding:"6px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
                       <div style={{ fontFamily:F.body, fontSize:"0.83rem", color:C.textPrimary }}>
                         {item.description}
                         {item._isOther&&<span style={{ marginLeft:6, fontSize:8.5, color:"#27a86e", background:"rgba(39,168,110,0.1)", padding:"1px 5px", borderRadius:2 }}>Custom</span>}
@@ -618,8 +618,8 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
 
       {/* Revision reason modal */}
       {showReviseConfirm && (
-        <div style={{ position:"fixed", inset:0, zIndex:250, background:"rgba(2,10,28,0.88)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem" }}>
-          <div className="rr-modal-card" style={{ background:C.surface, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:460, padding:"1.75rem" }}>
+        <div style={{ position:"fixed", inset:0, zIndex:250, background:"rgba(2,10,28,0.88)", backdropFilter:"blur(6px)", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"1.5rem", overflowY:"auto" }}>
+          <div className="rr-modal-card" style={{ background:C.surface, border:`1px solid ${C.borderBlue}`, borderRadius:3, width:"100%", maxWidth:460, padding:"1.75rem", marginBottom:"1.5rem" }}>
             <div style={{ fontFamily:F.display, fontSize:"1.25rem", fontWeight:500, color:C.textPrimary, marginBottom:"0.5rem" }}>Revise Quote</div>
             <p style={{ color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, lineHeight:1.65, margin:"0 0 1.25rem" }}>
               Please provide a reason for revising this quote. This will be recorded alongside the updated quote.

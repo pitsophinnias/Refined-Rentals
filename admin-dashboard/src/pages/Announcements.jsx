@@ -278,12 +278,12 @@ export default function Announcements() {
                     {item.image && <img src={item.image} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 2, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
-                        <span style={{ fontFamily: F.display, fontSize: "1.05rem", fontWeight: 600, color: C.textPrimary }}>{item.heading}</span>
+                        <span style={{ fontFamily: F.display, fontSize: "1.05rem", fontWeight: 600, color: C.textPrimary, overflowWrap: "break-word", wordBreak: "break-word" }}>{item.heading}</span>
                         <span style={{ fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", fontFamily: F.body, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: item.active ? "rgba(30,145,96,0.1)" : C.border, color: item.active ? "#1e9160" : C.textDim }}>
                           {item.active ? "Active" : "Archived"}
                         </span>
                       </div>
-                      <p style={{ margin: "0 0 8px", color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, lineHeight: 1.6 }}>{item.content}</p>
+                      <p style={{ margin: "0 0 8px", color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, lineHeight: 1.6, overflowWrap: "break-word", wordBreak: "break-word" }}>{item.content}</p>
                       <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body }}>
                         {new Date(item.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                         {" - "}
