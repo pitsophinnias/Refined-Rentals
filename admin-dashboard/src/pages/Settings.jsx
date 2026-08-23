@@ -440,10 +440,17 @@ function TabActivityLog({ C }) {
   );
 }
 
-const TABS=[{id:"general",label:"General"},{id:"users",label:"Users"},{id:"account",label:"My Account"},{id:"notifications",label:"Notifications"},{id:"activity",label:"Activity Log"}];
+const TABS=[
+  {id:"general",label:"General",perm:"settings"},
+  {id:"users",label:"Users",perm:"users"},
+  {id:"account",label:"My Account",perm:null}, // always available
+  {id:"notifications",label:"Notifications",perm:"notifications"},
+  {id:"activity",label:"Activity Log",perm:"activity"},
+];
 
 export default function Settings() {
   const { C, F } = useTheme();
+  const { can } = usePermissions();
   const [tab,setTab]=useState("general");
   const [adminEmail,setAdminEmail]=useState("");
   const [adminId,setAdminId]=useState(null);
@@ -452,6 +459,12 @@ export default function Settings() {
     authApi.me().then(d=>{setAdminEmail(d.admin.email);setAdminId(d.admin.id);}).catch(()=>{});
   },[]);
 
+  const visibleTabs = TABS.filter(t => !t.perm || can(t.perm));
+  // If the selected tab isn't one this role can see (including on first
+  // render, before a role-appropriate default is chosen), fall back to
+  // My Account rather than rendering restricted content.
+  const activeTab = visibleTabs.some(t => t.id === tab) ? tab : "account";
+
   return (
     <div className="rr-page" style={{padding:"2rem 2.5rem",maxWidth:820}}>
       <div style={{marginBottom:"1.75rem"}}>
@@ -459,17 +472,17 @@ export default function Settings() {
         <h1 className="rr-page-title" style={{fontFamily:F.display,fontSize:"2rem",fontWeight:500,color:C.textPrimary,margin:0}}>Settings</h1>
       </div>
       <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.border}`,marginBottom:"1.75rem",overflowX:"auto"}}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",borderBottom:tab===t.id?`2px solid ${C.blue}`:"2px solid transparent",cursor:"pointer",padding:"10px 20px",color:tab===t.id?C.blue:C.textSecondary,fontFamily:F.body,fontSize:C.fontSize,fontWeight:tab===t.id?600:400,transition:"color 0.2s",whiteSpace:"nowrap",marginBottom:-1}}>
+        {visibleTabs.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",borderBottom:activeTab===t.id?`2px solid ${C.blue}`:"2px solid transparent",cursor:"pointer",padding:"10px 20px",color:activeTab===t.id?C.blue:C.textSecondary,fontFamily:F.body,fontSize:C.fontSize,fontWeight:activeTab===t.id?600:400,transition:"color 0.2s",whiteSpace:"nowrap",marginBottom:-1}}>
             {t.label}
           </button>
         ))}
       </div>
-      {tab==="general"       && <TabGeneral C={C}/>}
-      {tab==="users"         && <TabUsers currentAdminId={adminId} C={C}/>}
-      {tab==="account"       && <TabAccount adminEmail={adminEmail} C={C}/>}
-      {tab==="notifications" && <TabNotifications C={C}/>}
-      {tab==="activity"      && <TabActivityLog C={C}/>}
+      {activeTab==="general"       && <TabGeneral C={C}/>}
+      {activeTab==="users"         && <TabUsers currentAdminId={adminId} C={C}/>}
+      {activeTab==="account"       && <TabAccount adminEmail={adminEmail} C={C}/>}
+      {activeTab==="notifications" && <TabNotifications C={C}/>}
+      {activeTab==="activity"      && <TabActivityLog C={C}/>}
     </div>
   );
 }

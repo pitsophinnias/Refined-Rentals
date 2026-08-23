@@ -55,7 +55,7 @@ export default function Sidebar({ page, setPage, requests, onSignOut, adminEmail
         {NAV.filter(item => {
           if (item.id === "gallery"       && !can("gallery"))       return false;
           if (item.id === "announcements" && !can("announcements")) return false;
-          if (item.id === "settings"      && !can("notes"))         return false; // only staff+ see settings
+          // Settings always shows — every role has at least "My Account" inside it.
           return true;
         }).map(item => {
           const active = page === item.id;

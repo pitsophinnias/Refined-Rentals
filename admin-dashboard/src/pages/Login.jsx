@@ -144,7 +144,7 @@ export default function Login({ onLogin }) {
               <input
                 type="email" value={email} required
                 onChange={e => setEmail(e.target.value)}
-                placeholder="admin@refinedrentals.co.ls"
+                placeholder="your@email.com"
                 style={inputStyle}
                 onFocus={e => e.target.style.borderColor = C.blue}
                 onBlur={e => e.target.style.borderColor = C.border}
@@ -162,7 +162,7 @@ export default function Login({ onLogin }) {
                   type={showPass ? "text" : "password"}
                   value={pass} required
                   onChange={e => setPass(e.target.value)}
-                  placeholder="••••••••••"
+                  placeholder="Enter your password"
                   style={{ ...inputStyle, paddingRight: 44 }}
                   onFocus={e => e.target.style.borderColor = C.blue}
                   onBlur={e => e.target.style.borderColor = C.border}
