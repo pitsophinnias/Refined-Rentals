@@ -10,10 +10,10 @@ import StatusBadge from "../components/StatusBadge.jsx";
 
 function StatCard({ label, value, sub, accent, C }) {
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, padding: "1.5rem", position: "relative", overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
+    <div className="rr-stat-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, padding: "1.5rem", position: "relative", overflow: "hidden", transition: "background 0.3s, border-color 0.3s" }}>
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: accent ?? C.blue, borderRadius: "3px 0 0 3px" }} />
       <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: C.textDim, fontFamily: F.body, marginBottom: "0.6rem" }}>{label}</div>
-      <div style={{ fontFamily: F.display, fontSize: "2.4rem", fontWeight: 500, color: C.textPrimary, lineHeight: 1 }}>{value}</div>
+      <div className="rr-stat-value" style={{ fontFamily: F.display, fontSize: "2.4rem", fontWeight: 500, color: C.textPrimary, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, marginTop: "0.4rem", fontWeight: 300 }}>{sub}</div>}
     </div>
   );
@@ -23,12 +23,15 @@ function EventCalendar({ requests, onSelectId, C }) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+  const [openDay,   setOpenDay]   = useState(null); // mobile dot-popup: day number currently expanded
 
   const prevMonth = () => {
+    setOpenDay(null);
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
     else setViewMonth(m => m - 1);
   };
   const nextMonth = () => {
+    setOpenDay(null);
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
     else setViewMonth(m => m + 1);
   };
@@ -80,19 +83,19 @@ function EventCalendar({ requests, onSelectId, C }) {
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
 
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, overflow: "hidden", transition: "background 0.3s" }}>
+    <div className="rr-cal-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, overflow: "hidden", transition: "background 0.3s" }}>
       {/* Header */}
-      <div style={{ padding: "1rem 1.25rem", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div className="rr-cal-header" style={{ padding: "1rem 1.25rem", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <span style={{ fontFamily: F.display, fontSize: "1.1rem", fontWeight: 500, color: C.textPrimary }}>Event Calendar</span>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={prevMonth} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, width: 28, height: 28, cursor: "pointer", color: C.textSecondary, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
-          <span style={{ fontFamily: F.body, fontSize: C.fontSize, fontWeight: 600, color: C.textPrimary, minWidth: 120, textAlign: "center" }}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
-          <button onClick={nextMonth} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, width: 28, height: 28, cursor: "pointer", color: C.textSecondary, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
+          <button className="rr-cal-navbtn" onClick={prevMonth} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, width: 28, height: 28, cursor: "pointer", color: C.textSecondary, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>‹</button>
+          <span className="rr-cal-month-label" style={{ fontFamily: F.body, fontSize: C.fontSize, fontWeight: 600, color: C.textPrimary, minWidth: 120, textAlign: "center" }}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
+          <button className="rr-cal-navbtn" onClick={nextMonth} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, width: 28, height: 28, cursor: "pointer", color: C.textSecondary, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>›</button>
         </div>
       </div>
 
       {/* Legend */}
-      <div style={{ padding: "0.5rem 1.25rem", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 16 }}>
+      <div style={{ padding: "0.5rem 1.25rem", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 16, flexWrap: "wrap" }}>
         {[["#e8a020", "New"], ["#2196c4", "In Review"], ["#1e9160", "Quoted / Accepted"]].map(([color, label]) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
@@ -102,14 +105,14 @@ function EventCalendar({ requests, onSelectId, C }) {
       </div>
 
       {/* Day headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: `1px solid ${C.border}` }}>
+      <div className="rr-cal-headrow" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: `1px solid ${C.border}` }}>
         {DAY_NAMES.map(d => (
           <div key={d} style={{ padding: "6px 0", textAlign: "center", fontSize: C.fontSizeSm, color: C.textDim, fontFamily: F.body, fontWeight: 600, letterSpacing: "0.06em" }}>{d}</div>
         ))}
       </div>
 
       {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+      <div className="rr-cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
         {Array.from({ length: totalCells }).map((_, idx) => {
           const day = idx - startOffset + 1;
           const valid = day >= 1 && day <= daysInMonth;
@@ -117,7 +120,7 @@ function EventCalendar({ requests, onSelectId, C }) {
           const events = valid ? (eventsByDay[day] || []) : [];
 
           return (
-            <div key={idx} style={{
+            <div key={idx} className="rr-cal-cell" style={{
               minHeight: 64, padding: "6px", border: `1px solid ${C.border}`,
               borderTop: "none", borderLeft: idx % 7 === 0 ? "none" : `1px solid ${C.border}`,
               background: isToday ? C.blueDim : valid ? C.surface : C.bg,
@@ -126,6 +129,9 @@ function EventCalendar({ requests, onSelectId, C }) {
               {valid && (
                 <>
                   <div style={{ fontSize: C.fontSizeSm, fontWeight: isToday ? 700 : 400, color: isToday ? C.blue : C.textDim, fontFamily: F.body, marginBottom: 4 }}>{day}</div>
+
+                  {/* Desktop/tablet: text bars */}
+                  <div className="rr-cal-events-desktop">
                   {events.slice(0, 2).map((r, ei) => {
                     const color = r.status === "NEW" ? "#e8a020" : r.status === "REVIEW" ? "#2196c4" : "#1e9160";
                     // Spanning bar: remove radius on sides that continue to adjacent cells
@@ -159,6 +165,38 @@ function EventCalendar({ requests, onSelectId, C }) {
                   {events.length > 2 && (
                     <div style={{ fontSize: 9, color: C.textDim, fontFamily: F.body }}>+{events.length - 2} more</div>
                   )}
+                  </div>
+
+                  {/* Phone: colour dots, tap for popup list */}
+                  {events.length > 0 && (
+                    <div className="rr-cal-events-mobile">
+                      <div className="rr-cal-dots" onClick={(e) => { e.stopPropagation(); setOpenDay(openDay === day ? null : day); }}>
+                        {events.slice(0, 4).map((r, ei) => {
+                          const color = r.status === "NEW" ? "#e8a020" : r.status === "REVIEW" ? "#2196c4" : "#1e9160";
+                          return <span key={`${r.id}-dot-${ei}`} className="rr-cal-dot" style={{ background: color }} />;
+                        })}
+                      </div>
+                      {openDay === day && (
+                        <>
+                          <div className="rr-cal-popup-backdrop" onClick={(e) => { e.stopPropagation(); setOpenDay(null); }} />
+                          <div className="rr-cal-popup" onClick={e => e.stopPropagation()} style={idx % 7 >= 3 ? { right: 0 } : { left: 0 }}>
+                            {events.map((r, ei) => {
+                              const color = r.status === "NEW" ? "#e8a020" : r.status === "REVIEW" ? "#2196c4" : "#1e9160";
+                              return (
+                                <div key={`${r.id}-pop-${ei}`} className="rr-cal-popup-item" onClick={() => onSelectId(r.id)}>
+                                  <span className="rr-cal-popup-dot" style={{ background: color }} />
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div className="rr-cal-popup-name">{r.name}</div>
+                                    <div className="rr-cal-popup-event">{r.event}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -186,19 +224,19 @@ export default function Dashboard({ requests, setPage, setSelectedId }) {
   const openDetail = (id) => { setSelectedId(id); setPage("requests"); };
 
   return (
-    <div style={{ padding: "2rem 2.5rem", maxWidth: 1100 }}>
+    <div className="rr-page" style={{ padding: "2rem 2.5rem", maxWidth: 1100 }}>
 
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>Overview</div>
-        <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Good day, Admin</h1>
+        <h1 className="rr-page-title" style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Good day, Admin</h1>
         <p style={{ color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, margin: "0.35rem 0 0" }}>
           {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: "2rem" }}>
+      <div className="rr-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: "2rem" }}>
         <StatCard C={C} label="Total Requests"  value={counts.total}  sub="All time"              accent={C.blue}   />
         <StatCard C={C} label="New"             value={counts.new}    sub="Awaiting review"        accent="#2196c4"  />
         <StatCard C={C} label="In Review"       value={counts.review} sub="Being worked on"        accent="#e8a020"  />

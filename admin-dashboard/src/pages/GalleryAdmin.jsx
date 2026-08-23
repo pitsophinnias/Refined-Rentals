@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
-import { gallery as galleryApi } from "../api.js";
+import { gallery as galleryApi, API_ORIGIN } from "../api.js";
 
 function byCategory(items, category) {
   return items
@@ -86,10 +86,10 @@ export default function GalleryAdmin() {
   };
 
   return (
-    <div style={{ padding: "2rem 2.5rem", maxWidth: 1000 }}>
+    <div className="rr-page" style={{ padding: "2rem 2.5rem", maxWidth: 1000 }}>
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ fontSize: 9.5, letterSpacing: "0.22em", textTransform: "uppercase", color: C.blue, fontFamily: F.body, marginBottom: 6 }}>Media</div>
-        <h1 style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Gallery Manager</h1>
+        <h1 className="rr-page-title" style={{ fontFamily: F.display, fontSize: "2rem", fontWeight: 500, color: C.textPrimary, margin: 0 }}>Gallery Manager</h1>
         <p style={{ color: C.textSecondary, fontSize: C.fontSize, fontFamily: F.body, fontWeight: 300, margin: "0.35rem 0 0" }}>
           Upload images and videos for the site. Each section below feeds a different part of the customer site.
         </p>
@@ -174,15 +174,15 @@ function GallerySection({ C, F, category, title, description, acceptHint, accept
           No media uploaded yet.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="rr-gallery-items" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((item, i) => (
-            <div key={item.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "0.9rem 1.25rem", display: "flex", alignItems: "center", gap: 14, transition: "background 0.2s" }}>
+            <div key={item.id} className="rr-gallery-item" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "0.9rem 1.25rem", display: "flex", alignItems: "center", gap: 14, transition: "background 0.2s" }}>
               {/* Thumbnail */}
-              <div style={{ width: 72, height: 52, borderRadius: 2, overflow: "hidden", flexShrink: 0, background: C.bg }}>
+              <div className="rr-gallery-thumb" style={{ width: 72, height: 52, borderRadius: 2, overflow: "hidden", flexShrink: 0, background: C.bg }}>
                 {item.type === "video" ? (
-                  <video src={item.src || `http://localhost:3001${item.url}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
+                  <video src={item.src || `${API_ORIGIN}${item.url}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />
                 ) : (
-                  <img src={item.src || `http://localhost:3001${item.url}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={item.src || `${API_ORIGIN}${item.url}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 )}
               </div>
 
@@ -192,25 +192,24 @@ function GallerySection({ C, F, category, title, description, acceptHint, accept
               </span>
 
               {/* Label input */}
-              <input value={item.label} onChange={e => onLabelChange(item.id, e.target.value)} style={{ ...iStyle, flex: 1 }}
+              <input value={item.label} onChange={e => onLabelChange(item.id, e.target.value)} style={{ ...iStyle, flex: 1, minWidth: 0 }}
                 onFocus={e => e.target.style.borderColor = C.blue}
                 onBlur={e => e.target.style.borderColor = C.border}
               />
 
-              {/* Order controls */}
-              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              {/* Order + delete controls, kept together as one row even when the card stacks */}
+              <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
                 {[["↑", () => onMoveUp(i), i === 0], ["↓", () => onMoveDown(i), i === items.length - 1]].map(([icon, fn, disabled]) => (
                   <button key={icon} onClick={fn} disabled={disabled} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, width: 28, height: 28, cursor: disabled ? "not-allowed" : "pointer", color: disabled ? C.textDim : C.textSecondary, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", opacity: disabled ? 0.4 : 1 }}>
                     {icon}
                   </button>
                 ))}
+                {/* Delete */}
+                <button onClick={() => onRemove(item.id)} style={{ background: "rgba(217,79,79,0.08)", border: "1px solid rgba(217,79,79,0.2)", borderRadius: 2, width: 32, height: 32, cursor: "pointer", color: C.danger, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(217,79,79,0.18)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(217,79,79,0.08)"}
+                >✕</button>
               </div>
-
-              {/* Delete */}
-              <button onClick={() => onRemove(item.id)} style={{ background: "rgba(217,79,79,0.08)", border: "1px solid rgba(217,79,79,0.2)", borderRadius: 2, width: 32, height: 32, cursor: "pointer", color: C.danger, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(217,79,79,0.18)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(217,79,79,0.08)"}
-              >✕</button>
             </div>
           ))}
         </div>

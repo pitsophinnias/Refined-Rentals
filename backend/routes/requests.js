@@ -9,8 +9,19 @@
  */
 
 const router      = require("express").Router();
+const rateLimit   = require("express-rate-limit");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
+const { cleanField, isValidDate, cleanServices } = require("../lib/validate.js");
+
+/* ── Rate limiting — quote submission (public, unauthenticated) ─ */
+const quoteLimiter = rateLimit({
+  windowMs:        60 * 60 * 1000, // 1 hour
+  max:             10,              // 10 submissions per IP per hour
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message:         { error: "Too many quote requests from this IP. Please try again later." },
+});
 
 /* ── Role helpers ────────────────────────────────────────────── */
 const ROLES = {
@@ -70,7 +81,7 @@ function pick(obj, keys) {
 }
 
 /* ── POST /api/requests — customer submits quote ─────────────── */
-router.post("/", async (req, res) => {
+router.post("/", quoteLimiter, async (req, res) => {
   const {
     name, phone, email, event, location,
     duration, date, startDate, endDate,
@@ -87,6 +98,9 @@ router.post("/", async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: "Invalid email address" });
   }
+  if (email.trim().length > 255) {
+    return res.status(400).json({ error: "Email is too long" });
+  }
 
   // Duration must be one of the known values
   const validDurations = ["single", "overnight", "multiple"];
@@ -97,6 +111,13 @@ router.post("/", async (req, res) => {
   // services must be an array
   if (services !== undefined && !Array.isArray(services)) {
     return res.status(400).json({ error: "services must be an array" });
+  }
+
+  // Date fields, when provided, must be real calendar dates
+  for (const [label, val] of [["date", date], ["startDate", startDate], ["endDate", endDate]]) {
+    if (val !== undefined && val !== null && val !== "" && !isValidDate(val)) {
+      return res.status(400).json({ error: `Invalid ${label}` });
+    }
   }
 
   try {
@@ -112,20 +133,20 @@ router.post("/", async (req, res) => {
        RETURNING *`,
       [
         id,
-        name.trim(),
-        phone.trim(),
-        email.trim().toLowerCase(),
-        event?.trim()      || null,
-        location?.trim()   || null,
-        duration           || "single",
-        date               || null,
-        startDate          || null,
-        endDate            || null,
-        JSON.stringify(services || []),
-        tentSize           || null,
-        tentConfig         || null,
-        other?.trim()      || null,
-        message?.trim()    || null,
+        cleanField(name, 150),
+        cleanField(phone, 40),
+        email.trim().toLowerCase().slice(0, 255),
+        cleanField(event, 150),
+        cleanField(location, 255),
+        duration            || "single",
+        date                || null,
+        startDate           || null,
+        endDate              || null,
+        JSON.stringify(cleanServices(services) || []),
+        cleanField(tentSize, 20),
+        cleanField(tentConfig, 20),
+        cleanField(other, 2000),
+        cleanField(message, 2000),
       ]
     );
 
@@ -183,6 +204,13 @@ router.post("/manual", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "At least one service is required" });
   }
 
+  // Date fields, when provided, must be real calendar dates
+  for (const [label, val] of [["date", date], ["startDate", startDate], ["endDate", endDate]]) {
+    if (val !== undefined && val !== null && val !== "" && !isValidDate(val)) {
+      return res.status(400).json({ error: `Invalid ${label}` });
+    }
+  }
+
   try {
     const { rows: existing } = await pool.query("SELECT id FROM quote_requests");
     const id = nextId(existing);
@@ -196,20 +224,20 @@ router.post("/manual", requireAuth, async (req, res) => {
        RETURNING *`,
       [
         id,
-        name.trim(),
-        phone.trim(),
-        email?.trim().toLowerCase() || null,
-        event.trim(),
-        location.trim(),
+        cleanField(name, 150),
+        cleanField(phone, 40),
+        email?.trim().toLowerCase().slice(0, 255) || null,
+        cleanField(event, 150),
+        cleanField(location, 255),
         duration,
         date       || null,
         startDate  || null,
         endDate    || null,
-        JSON.stringify(services || []),
-        tentSize   || null,
-        tentConfig || null,
-        other?.trim()   || null,
-        message?.trim() || null,
+        JSON.stringify(cleanServices(services) || []),
+        cleanField(tentSize, 20),
+        cleanField(tentConfig, 20),
+        cleanField(other, 2000),
+        cleanField(message, 2000),
         "manual",
       ]
     );
@@ -327,15 +355,31 @@ router.patch("/:id", requireAuth, async (req, res) => {
     }
   }
 
+  // JSONB payloads (quote_data, reply_channels) are admin-constructed but
+  // still capped to prevent an oversized/malformed payload reaching the DB.
+  const MAX_JSONB_BYTES = 200_000;
+  for (const key of jsonbCols) {
+    const val = req.body[key];
+    if (val === undefined || val === null) continue;
+    if (Buffer.byteLength(JSON.stringify(val), "utf8") > MAX_JSONB_BYTES) {
+      return res.status(400).json({ error: `${key} payload is too large` });
+    }
+  }
+
   const updates = [];
   const values  = [];
+  const textCols = { notes: 5000, closed_note: 2000 };
 
   for (const key of allowed) {
-    const val = req.body[key];
+    let val = req.body[key];
     if (val === undefined) continue;
 
     // Skip null JSONB — leave existing DB value intact
     if (jsonbCols.includes(key) && val === null) continue;
+
+    if (key in textCols && typeof val === "string") {
+      val = cleanField(val, textCols[key]) ?? "";
+    }
 
     values.push(
       typeof val === "object" && val !== null
@@ -391,12 +435,19 @@ router.delete("/:id", requireAuth, async (req, res) => {
   if (!isValidId(req.params.id)) {
     return res.status(400).json({ error: "Invalid request ID format" });
   }
+  // Hard delete is irreversible — restrict to the same roles that can close requests.
+  if (!await can(pool, req.admin.id, "close")) {
+    return res.status(403).json({ error: "Your role cannot delete requests" });
+  }
   try {
     const { rowCount } = await pool.query(
       "DELETE FROM quote_requests WHERE id = $1",
       [req.params.id]
     );
     if (rowCount === 0) return res.status(404).json({ error: "Request not found" });
+
+    await logAction(req.admin.id, req.admin.email, "REQUEST_DELETED", req.params.id, null);
+
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Delete request error:", err);
