@@ -229,6 +229,16 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
   const isClosed = request.status === "CLOSED";
   const hasQuote = Boolean(request.quote_data);
 
+  // wa.me needs digits only (no +, spaces, or dashes) in the phone number.
+  const waLink = request.phone ? (() => {
+    const digits = request.phone.replace(/\D/g, "");
+    const dateText = request.duration === "multiple"
+      ? `${fmtDate(request.start_date)} – ${fmtDate(request.end_date)}`
+      : fmtDate(request.date || request.start_date);
+    const msg = `Hello ${request.name}, this is Refined Rentals regarding your quote request for ${request.event} on ${dateText}. `;
+    return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
+  })() : null;
+
   return (
     <div className="rr-page" style={{ padding:"2rem 2.5rem", maxWidth:920 }}>
 
@@ -321,6 +331,20 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
             <InfoRow label="Name"  value={request.name} />
             <InfoRow label="Email" value={request.email} />
             <InfoRow label="Phone" value={request.phone} />
+            {waLink && (
+              <div style={{ paddingTop:10 }}>
+                <a
+                  href={waLink} target="_blank" rel="noreferrer"
+                  className="rr-touch-btn"
+                  style={{ display:"inline-flex", alignItems:"center", gap:7, background:C.blue, border:"none", color:C.white, textDecoration:"none", cursor:"pointer", padding:"9px 18px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"background 0.25s" }}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.blueLight}
+                  onMouseLeave={e=>e.currentTarget.style.background=C.blue}
+                >
+                  <WhatsAppIcon/>
+                  Chat on WhatsApp
+                </a>
+              </div>
+            )}
           </Card>
 
           {/* Event details */}
@@ -690,3 +714,6 @@ function Card({ title, children }) {
 function SendIcon() {
   const { C, F } = useTheme();
  return <svg viewBox="0 0 16 16" fill="none" style={{width:14,height:14}}><path d="M2 8l12-6-6 12-2-4-4-2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>; }
+
+function WhatsAppIcon() {
+ return <svg viewBox="0 0 16 16" fill="none" style={{width:14,height:14}}><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5.5c.5 1 1 2 2 2.5s2 .5 2.5 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>; }
