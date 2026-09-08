@@ -133,6 +133,14 @@ const SETTINGS_SCHEMA = `
     detail      TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  -- Simple key/value store for admin-editable business settings
+  -- (e.g. whatsapp_number). Read with a fallback default where used.
+  CREATE TABLE IF NOT EXISTS settings (
+    key        VARCHAR(100) PRIMARY KEY,
+    value      TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
 async function initSettingsDB() {

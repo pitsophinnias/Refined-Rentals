@@ -267,6 +267,58 @@ router.patch("/account/password", requireAuth, async (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════════
+   GENERAL SETTINGS (key/value store — Admin only)
+══════════════════════════════════════════════════════════════ */
+
+const DEFAULT_WHATSAPP_NUMBER = "+26663840950";
+
+router.get("/general", requireAuth, async (req, res) => {
+  if (!await isAdmin(req.admin.id)) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
+  try {
+    const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'whatsapp_number'");
+    res.json({ whatsapp_number: rows[0]?.value || DEFAULT_WHATSAPP_NUMBER });
+  } catch (err) {
+    console.error("Get general settings error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.patch("/general", requireAuth, async (req, res) => {
+  if (!await isAdmin(req.admin.id)) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
+  const { whatsapp_number } = req.body;
+  if (!whatsapp_number?.trim()) {
+    return res.status(400).json({ error: "WhatsApp number is required" });
+  }
+  // Loose international-number check — digits, spaces, and a leading +
+  if (!/^\+?[\d\s]{7,20}$/.test(whatsapp_number.trim())) {
+    return res.status(400).json({ error: "Invalid WhatsApp number format" });
+  }
+
+  try {
+    const value = whatsapp_number.trim().slice(0, 30);
+    await pool.query(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('whatsapp_number', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+      [value]
+    );
+
+    await logAction(pool, req.admin.id, req.admin.email,
+      "UPDATE_WHATSAPP_NUMBER", "settings", "whatsapp_number",
+      `Set WhatsApp number to ${value}`
+    );
+
+    res.json({ whatsapp_number: value });
+  } catch (err) {
+    console.error("Update general settings error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
    NOTIFICATION EMAILS
 ══════════════════════════════════════════════════════════════ */
 
@@ -275,7 +327,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
     const { rows } = await pool.query(
       "SELECT * FROM notification_emails ORDER BY created_at ASC"
     );
-    res.json({ emails: rows });
+    res.json({ emails: rows, primaryEmail: process.env.NOTIFY_EMAIL || null });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
