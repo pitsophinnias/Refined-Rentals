@@ -108,12 +108,37 @@ function RoleBadge({ role, C }) {
 
 function TabGeneral({ C }) {
   const { fontSize, changeFontSize } = useTheme();
+  const { role } = usePermissions();
   const [apiStatus, setApiStatus] = useState("checking");
   useEffect(() => {
     fetch(`${BASE}/health`)
       .then(r => r.ok?setApiStatus("ok"):setApiStatus("error"))
       .catch(() => setApiStatus("error"));
   }, []);
+
+  // Business WhatsApp number — Admin only, shown in the quote email footer.
+  const [whatsapp, setWhatsapp] = useState("");
+  const [waLoading, setWaLoading] = useState(true);
+  const [waSaving, setWaSaving] = useState(false);
+  const [waFb, setWaFb] = useState({msg:"",type:"success"});
+  const waFlash = (msg,type="success") => { setWaFb({msg,type}); setTimeout(()=>setWaFb({msg:"",type:"success"}),4000); };
+  useEffect(() => {
+    if (role !== "ADMIN") { setWaLoading(false); return; }
+    settingsFetch("/general").then(d => { setWhatsapp(d.whatsapp_number || ""); setWaLoading(false); }).catch(() => setWaLoading(false));
+  }, [role]);
+  const saveWhatsapp = async () => {
+    setWaSaving(true);
+    try {
+      const d = await settingsFetch("/general", { method:"PATCH", body: JSON.stringify({ whatsapp_number: whatsapp }) });
+      setWhatsapp(d.whatsapp_number);
+      waFlash("WhatsApp number updated");
+    } catch (err) {
+      waFlash(err.message, "error");
+    } finally {
+      setWaSaving(false);
+    }
+  };
+
   const SIZES = [{label:"Small",value:12},{label:"Medium",value:14},{label:"Large",value:16}];
   return (
     <>
@@ -122,6 +147,21 @@ function TabGeneral({ C }) {
           <Row key={l} label={l} C={C}><span style={{ fontFamily:F.body, fontSize:C.fontSize, color:C.textSecondary, fontWeight:300 }}>{v}</span></Row>
         ))}
       </Card>
+      {role === "ADMIN" && (
+        <Card C={C} title="Contact & Communication">
+          <Row label="Business WhatsApp Number" hint="Appears in the quote email footer sent to customers" C={C}>
+            {waLoading ? (
+              <span style={{ fontFamily:F.body, fontSize:C.fontSizeSm, color:C.textDim }}>Loading...</span>
+            ) : (
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <div style={{ width:200 }}><Input C={C} value={whatsapp} onChange={setWhatsapp} placeholder="+26663840950" /></div>
+                <Btn small C={C} onClick={saveWhatsapp} disabled={waSaving}>{waSaving?"Saving...":"Save"}</Btn>
+              </div>
+            )}
+          </Row>
+          <Feedback msg={waFb.msg} type={waFb.type} C={C} />
+        </Card>
+      )}
       <Card C={C} title="Appearance">
         <Row label="Font Size" hint="Adjusts text size across the entire dashboard" C={C}>
           <div style={{ display:"flex", gap:6 }}>
@@ -142,7 +182,7 @@ function TabGeneral({ C }) {
             </span>
           </div>
         </Row>
-        {[["Database","PostgreSQL 18.1 (local)","Supabase migration planned"],["Auth","JWT via sessionStorage","httpOnly cookies on production"],["File Storage","Local: /backend/uploads","Supabase Storage planned"],["Email Sending","Not yet configured","Phase 5: EmailJS or Resend"]].map(([l,v,h]) => (
+        {[["Database","PostgreSQL 18.1 (local)","Supabase migration planned"],["Auth","JWT via sessionStorage","httpOnly cookies on production"],["File Storage","Local: /backend/uploads","Supabase Storage planned"],["Email Sending","Resend (test mode)","Switch sender domain when refinedrentals.co.ls is verified"]].map(([l,v,h]) => (
           <Row key={l} label={l} hint={h} C={C}><span style={{ fontFamily:F.body, fontSize:C.fontSize, color:C.textSecondary, fontWeight:300 }}>{v}</span></Row>
         ))}
       </Card>
@@ -314,18 +354,26 @@ function TabAccount({ adminEmail, C }) {
   );
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function TabNotifications({ C }) {
+  const { role } = usePermissions();
+  const canManageRecipients = role === "ADMIN" || role === "MANAGER";
+
   const [emails,setEmails]=useState([]);
+  const [primaryEmail,setPrimaryEmail]=useState(null);
   const [newEmail,setNewEmail]=useState("");
   const [newLabel,setNewLabel]=useState("");
   const [loading,setLoading]=useState(true);
   const [fb,setFb]=useState({msg:"",type:"success"});
   const flash=(msg,type="success")=>{setFb({msg,type});setTimeout(()=>setFb({msg:"",type:"success"}),4000);};
-  const load=()=>settingsFetch("/notifications").then(d=>{setEmails(d.emails);setLoading(false);}).catch(()=>setLoading(false));
+  const load=()=>settingsFetch("/notifications").then(d=>{setEmails(d.emails);setPrimaryEmail(d.primaryEmail);setLoading(false);}).catch(()=>setLoading(false));
   useEffect(()=>{load();},[]);
   const add=async()=>{
-    if(!newEmail)return;
-    try{await settingsFetch("/notifications",{method:"POST",body:JSON.stringify({email:newEmail,label:newLabel})});flash(`${newEmail} added`);setNewEmail("");setNewLabel("");load();}
+    const trimmed = newEmail.trim();
+    if(!trimmed)return;
+    if(!EMAIL_RE.test(trimmed)){flash("Enter a valid email address","error");return;}
+    try{await settingsFetch("/notifications",{method:"POST",body:JSON.stringify({email:trimmed,label:newLabel})});flash(`${trimmed} added`);setNewEmail("");setNewLabel("");load();}
     catch(err){flash(err.message,"error");}
   };
   const toggle=async(id,active)=>{
@@ -336,15 +384,38 @@ function TabNotifications({ C }) {
     try{await settingsFetch(`/notifications/${id}`,{method:"DELETE"});flash(`${email} removed`);load();}
     catch(err){flash(err.message,"error");}
   };
+
+  if (!canManageRecipients) {
+    return (
+      <Card C={C} title="Notification Recipients">
+        <p style={{margin:"0.75rem 0",fontFamily:F.body,fontSize:C.fontSize,color:C.textDim,lineHeight:1.65}}>
+          This section is only available to Admin and Manager roles.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Feedback msg={fb.msg} type={fb.type} C={C}/>
-      <Card C={C} title="Quote Notification Emails">
+      <Card C={C} title="Notification Recipients">
         <p style={{margin:"0.75rem 0",fontFamily:F.body,fontSize:C.fontSizeSm,color:C.textDim,lineHeight:1.65}}>
-          When a new quote request comes in, a notification will be sent to these addresses in addition to the main business email.
+          When a new quote request comes in, a notification is sent to the primary address and every recipient below.
         </p>
+
+        {/* Primary — read only, from environment */}
+        {loading?null:(
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"0.9rem 0",borderBottom:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+            <div>
+              <div style={{fontFamily:F.body,fontSize:C.fontSize,fontWeight:500,color:C.textPrimary}}>{primaryEmail || "Not configured"}</div>
+              <div style={{fontFamily:F.body,fontSize:C.fontSizeSm-1,color:C.textDim,marginTop:2}}>Primary — configured in system settings</div>
+            </div>
+            <span style={{fontSize:9,letterSpacing:"0.14em",textTransform:"uppercase",fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.blueDim,color:C.blue}}>Primary</span>
+          </div>
+        )}
+
         {loading?<p style={{color:C.textDim,fontFamily:F.body,fontSize:C.fontSize}}>Loading...</p>
-        :emails.length===0?<p style={{color:C.textDim,fontFamily:F.body,fontSize:C.fontSize,padding:"0.5rem 0"}}>No notification emails added yet.</p>
+        :emails.length===0?<p style={{color:C.textDim,fontFamily:F.body,fontSize:C.fontSize,padding:"0.5rem 0"}}>No additional recipients added yet.</p>
         :emails.map(e=>(
           <div key={e.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"0.9rem 0",borderBottom:`1px solid ${C.border}`,flexWrap:"wrap"}}>
             <div>
@@ -379,6 +450,7 @@ const ACTION_LABELS = {
   RESET_PASSWORD:"Reset Password",CHANGE_OWN_PASSWORD:"Changed Own Password",
   ADD_NOTIFICATION_EMAIL:"Added Notification Email",REMOVE_NOTIFICATION_EMAIL:"Removed Notification Email",
   REQUEST_DELETED:"Request Deleted",MANUAL_REQUEST_CREATED:"Manual Request Created",
+  UPDATE_WHATSAPP_NUMBER:"Updated WhatsApp Number",
 };
 
 function ActionBadge({ action, C }) {

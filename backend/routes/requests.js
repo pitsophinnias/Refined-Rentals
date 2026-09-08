@@ -14,6 +14,7 @@ const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField, isValidDate, cleanServices } = require("../lib/validate.js");
 const { can } = require("../lib/roles.js");
+const { sendNewRequestNotification, sendQuoteToCustomer } = require("../lib/email.js");
 
 /* ── Rate limiting — quote submission (public, unauthenticated) ─ */
 const quoteLimiter = rateLimit({
@@ -129,6 +130,9 @@ router.post("/", quoteLimiter, async (req, res) => {
       ]
     );
 
+    // Fire-and-forget — never let email sending delay or break the response.
+    sendNewRequestNotification(rows[0]).catch(err => console.error("New-request email error:", err.message));
+
     res.status(201).json({ request: rows[0] });
   } catch (err) {
     console.error("Create request error:", err);
@@ -226,6 +230,9 @@ router.post("/manual", requireAuth, async (req, res) => {
       "MANUAL_REQUEST_CREATED", id,
       `Created manually for ${name.trim()}`
     );
+
+    // Fire-and-forget — never let email sending delay or break the response.
+    sendNewRequestNotification(rows[0]).catch(err => console.error("New-request email error:", err.message));
 
     res.status(201).json({ request: rows[0] });
   } catch (err) {
@@ -405,6 +412,11 @@ router.patch("/:id", requireAuth, async (req, res) => {
         req.params.id,
         "Quote built and sent"
       );
+    }
+
+    // Fire-and-forget — never let email sending delay or break the response.
+    if (req.body.quote_data) {
+      sendQuoteToCustomer(rows[0], req.body.quote_data).catch(err => console.error("Quote email error:", err.message));
     }
 
     res.json({ request: rows[0] });
