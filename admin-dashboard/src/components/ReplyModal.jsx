@@ -242,6 +242,7 @@ export default function ReplyModal({ request, reviseReason, onClose, onQuoteSent
   const [showRespond, setShowRespond] = useState(false);
   const [channels,    setChannels]    = useState({ email: false, whatsapp: false }); // both can be active
   const [sending,     setSending]     = useState(false);
+  const [personalNote, setPersonalNote] = useState("");
 
   const overlayRef = useRef(null);
 
@@ -371,6 +372,7 @@ Feel free to reply here or call us if you have any questions. 🙏
       messageWA:    waBodyRaw,
       reviseReason: reviseReason || null,
       pdfBase64:    pdfBase64 || null, // stored permanently in DB
+      personalNote: personalNote.trim() || null,
     };
     setTimeout(() => {
       setSending(false);
@@ -609,6 +611,16 @@ Feel free to reply here or call us if you have any questions. 🙏
           {pdfReady&&showRespond&&(
             <div style={{animation:"rrFadeIn 0.2s ease"}}>
               <SectionHead num="3" label="Respond to Customer" />
+
+              {/* personal message to customer */}
+              <div style={{marginBottom:"1.25rem"}}>
+                <label style={{display:"block",fontSize:9,letterSpacing:"0.2em",textTransform:"uppercase",color:C.textDim,fontFamily:F.body,marginBottom:6}}>Personal message to customer</label>
+                <textarea value={personalNote} onChange={e=>setPersonalNote(e.target.value)} rows={4}
+                  placeholder="e.g. Hi Thabo, thank you for your enquiry! Here is your quote for your wedding..."
+                  style={{...iSm,width:"100%",boxSizing:"border-box",padding:"10px 12px",fontSize:"0.85rem",resize:"vertical",lineHeight:1.65}}
+                  onFocus={fi} onBlur={fo}
+                />
+              </div>
 
               {/* channel choice — toggle both */}
               <div style={{marginBottom:"1rem"}}>
