@@ -779,7 +779,13 @@ function Contact({ onQuote }) {
                   <div style={{ width: 1, alignSelf: "stretch", background: "rgba(33,150,196,0.25)", flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: C.slate, marginBottom: 5, fontFamily: "'DM Sans', system-ui, sans-serif" }}>{c.label}</div>
-                    {c.values.map(v => <div key={v} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{v}</div>)}
+                    {c.label === "Phone" ? (
+                      c.values.map(v => <a key={v} href={`tel:${v.replace(/\s+/g, "")}`} className="contact-phone-link" style={{ display: "block", color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{v}</a>)
+                    ) : c.label === "Facebook" ? (
+                      <a href="https://www.facebook.com/p/Refined-Rentals-61570419307607/" target="_blank" rel="noopener noreferrer" className="contact-facebook-link" style={{ display: "block", color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{c.values[0]}</a>
+                    ) : (
+                      c.values.map(v => <div key={v} style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 300 }}>{v}</div>)
+                    )}
                   </div>
                 </div>
               ))}
@@ -804,7 +810,13 @@ function Contact({ onQuote }) {
           </Reveal>
         </div>
       </div>
-      <style>{`@media(max-width:768px){.rr-contact-grid{grid-template-columns:1fr!important}}`}</style>
+      <style>{`
+        @media(max-width:768px){.rr-contact-grid{grid-template-columns:1fr!important}}
+        .contact-facebook-link{cursor:pointer;text-decoration:underline;transition:opacity 0.2s ease}
+        .contact-facebook-link:hover{opacity:0.75}
+        .contact-phone-link{cursor:pointer;text-decoration:none;transition:opacity 0.2s ease}
+        .contact-phone-link:hover{text-decoration:underline;opacity:0.75}
+      `}</style>
     </section>
   );
 }
