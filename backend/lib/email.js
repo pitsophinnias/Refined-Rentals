@@ -8,9 +8,9 @@
 const { Resend } = require("resend");
 const { pool } = require("../db.js");
 
-// Local/test sending domain. Switch to "Refined Rentals <noreply@refinedrentals.co.ls>"
-// once that domain is verified in the Resend dashboard for production.
-const FROM = "Refined Rentals <onboarding@resend.dev>";
+// EMAIL_FROM must use a domain verified in Resend. Falls back to the
+// Resend sandbox sender for local/test use when it isn't set.
+const FROM = process.env.EMAIL_FROM || "Refined Rentals <onboarding@resend.dev>";
 
 const NAVY = "#03112e";
 const BLUE = "#2196c4";
@@ -143,12 +143,17 @@ async function sendNewRequestNotification(request) {
   `);
 
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM,
       to: Array.from(recipients),
       subject: `New Quote Request — ${request.name} (${request.event || "Event"})`,
       html,
     });
+    if (error) {
+      console.error("Resend rejected email:", error.name, error.statusCode, error.message);
+      return;
+    }
+    console.log("Email sent:", data?.id);
   } catch (err) {
     console.error("Failed to send new-request notification email:", err.message);
   }
@@ -205,12 +210,17 @@ async function sendQuoteToCustomer(request, quoteData) {
   `);
 
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM,
       to: [request.email],
       subject: `Your Quote from Refined Rentals — ${request.event || "Your Event"}`,
       html,
     });
+    if (error) {
+      console.error("Resend rejected email:", error.name, error.statusCode, error.message);
+      return;
+    }
+    console.log("Email sent:", data?.id);
   } catch (err) {
     console.error(`Failed to send quote email for ${request.id}:`, err.message);
   }
