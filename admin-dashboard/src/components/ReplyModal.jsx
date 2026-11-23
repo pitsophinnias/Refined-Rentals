@@ -45,7 +45,8 @@ async function generateQuotePDF(request, items, declinedItems, note) {
   doc.setTextColor(...BLUE); doc.setFont("helvetica","bold"); doc.setFontSize(22);
   doc.text("QUOTE", pw-m, 20, {align:"right"});
   doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(180,195,215);
-  doc.text(`Ref: RR-${Date.now().toString().slice(-6)}`, pw-m, 28, {align:"right"});
+  // Use the real request number so the PDF matches the admin list
+  doc.text(`Ref: ${request.id || "RR-" + Date.now().toString().slice(-6)}`, pw-m, 28, {align:"right"});
   doc.text(`Date: ${fmtDate(new Date().toISOString())}`, pw-m, 34, {align:"right"});
   y = 50;
 

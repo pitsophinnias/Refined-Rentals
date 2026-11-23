@@ -43,12 +43,16 @@ function isValidId(id) {
   return /^RR-\d{1,6}$/.test(id);
 }
 
+// Lowest free number, so a number freed up by deleting a mistake/test
+// request gets used again (delete RR-004 → the next request is RR-004).
 function nextId(existing) {
-  if (existing.length === 0) return "RR-001";
-  const nums = existing
-    .map(r => parseInt(r.id.replace("RR-", ""), 10))
-    .filter(n => !isNaN(n));
-  const next = Math.max(...nums) + 1;
+  const used = new Set(
+    existing
+      .map(r => parseInt(String(r.id).replace("RR-", ""), 10))
+      .filter(n => !isNaN(n))
+  );
+  let next = 1;
+  while (used.has(next)) next++;
   return `RR-${String(next).padStart(3, "0")}`;
 }
 
