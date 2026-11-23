@@ -48,6 +48,21 @@ const DURATIONS = [["single", "Single Day"], ["overnight", "Overnight"], ["multi
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+/* Label + input + error wrapper.
+ * Must live OUTSIDE NewRequestModal: if it's declared inside, React sees a
+ * brand new component type on every render, unmounts the old <input> and
+ * mounts a fresh one, so focus is lost after each keystroke. */
+function Field({ label, error, children }) {
+  const { C, F } = useTheme();
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textDim, fontFamily: F.body, marginBottom: 6 }}>{label}</label>
+      {children}
+      {error && <div style={{ color: C.danger, fontSize: 11, fontFamily: F.body, marginTop: 5 }}>{error}</div>}
+    </div>
+  );
+}
+
 export default function NewRequestModal({ onClose, onCreated }) {
   const { C, F } = useTheme();
 
@@ -151,14 +166,6 @@ export default function NewRequestModal({ onClose, onCreated }) {
   const errStyle = (key) => errors[key] ? { borderColor: C.danger } : {};
   const fi = e => { e.target.style.borderColor = C.blue; };
   const fo = (key) => e => { e.target.style.borderColor = errors[key] ? C.danger : C.border; };
-
-  const Field = ({ label, error, children }) => (
-    <div>
-      <label style={{ display: "block", fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textDim, fontFamily: F.body, marginBottom: 6 }}>{label}</label>
-      {children}
-      {error && <div style={{ color: C.danger, fontSize: 11, fontFamily: F.body, marginTop: 5 }}>{error}</div>}
-    </div>
-  );
 
   return (
     <div

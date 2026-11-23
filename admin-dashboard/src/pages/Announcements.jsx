@@ -6,9 +6,40 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../ThemeProvider.jsx";
-import { announcements as annApi } from "../api.js";
+import { announcements as annApi, API_ORIGIN } from "../api.js";
 import { usePermissions } from "../usePermissions.js";
 import NoPermission from "../components/NoPermission.jsx";
+
+/* Absolute URL for a stored image path ("/uploads/..." lives on the API host) */
+function imageSrc(url) {
+  if (!url) return null;
+  return url.startsWith("/") ? `${API_ORIGIN}${url}` : url;
+}
+
+/* Shrink big phone photos before upload: max 1600px on the long side, JPEG.
+ * Keeps uploads small (well under typical proxy body limits) and fast. */
+function compressImage(file, maxSide = 1600, quality = 0.85) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type === "image/gif") return resolve(file);
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        if (!blob) return resolve(file);
+        const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+        resolve(new File([blob], name, { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
+    img.src = objUrl;
+  });
+}
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -17,7 +48,8 @@ function uid() {
 const EMPTY_FORM = {
   heading: "",
   content: "",
-  image: null,
+  image: null,      // preview data URL (local only, never sent to the API)
+  imageFile: null,  // compressed File that gets uploaded on create
   startDate: "",
   endDate: "",
 };
@@ -63,10 +95,15 @@ export default function Announcements() {
       return;
     }
     try {
+      let imageUrl = null;
+      if (form.imageFile) {
+        const up = await annApi.uploadImage(form.imageFile);
+        imageUrl = up.url;
+      }
       const data = await annApi.create({
         heading:    form.heading,
         content:    form.content,
-        image_url:  form.image || null,
+        image_url:  imageUrl,
         start_date: form.startDate,
         end_date:   form.endDate,
       });
@@ -125,11 +162,12 @@ export default function Announcements() {
   };
 
   /* Image upload */
-  const handleImage = (file) => {
+  const handleImage = async (file) => {
     if (!file) return;
+    const compressed = await compressImage(file);
     const reader = new FileReader();
-    reader.onload = e => setForm(f => ({ ...f, image: e.target.result }));
-    reader.readAsDataURL(file);
+    reader.onload = e => setForm(f => ({ ...f, image: e.target.result, imageFile: compressed }));
+    reader.readAsDataURL(compressed);
   };
 
   /* Styles */
@@ -193,7 +231,7 @@ export default function Announcements() {
                 {form.image && (
                   <>
                     <img src={form.image} alt="" style={{ width: 48, height: 36, objectFit: "cover", borderRadius: 2 }} />
-                    <button onClick={() => setForm(f => ({ ...f, image: null }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: 13 }}>Remove</button>
+                    <button onClick={() => setForm(f => ({ ...f, image: null, imageFile: null }))} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: 13 }}>Remove</button>
                   </>
                 )}
                 <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleImage(e.target.files[0])} />
@@ -275,7 +313,7 @@ export default function Announcements() {
                 {/* Card */}
                 <div className="rr-card-pad" style={{ background: C.surface, border: `1px solid ${expiring ? "rgba(232,160,32,0.3)" : C.border}`, borderRadius: expiring ? "0 0 2px 2px" : 2, padding: "1.25rem 1.5rem" }}>
                   <div className="rr-ann-card" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    {item.image && <img src={item.image} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 2, flexShrink: 0 }} />}
+                    {item.image_url && <img src={imageSrc(item.image_url)} alt="" onError={e => { e.currentTarget.style.display = "none"; }} style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 2, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
                         <span style={{ fontFamily: F.display, fontSize: "1.05rem", fontWeight: 600, color: C.textPrimary, overflowWrap: "break-word", wordBreak: "break-word" }}>{item.heading}</span>
