@@ -172,29 +172,94 @@ function SectionLabel({ text }) {
   );
 }
 
-/* ─── Announcement Banner ────────────────────────────────────── */
+/* ─── Announcement Banner + Pop-up ─────────────────────────────
+ * When an announcement has a picture, it first opens as a centred pop-up
+ * showing just the picture. Closing the pop-up (X, backdrop click or Esc)
+ * drops it back to the top banner, where the picture sits on the left and
+ * can be clicked to open the pop-up again. No picture = banner only.
+ */
+
+// Stored image paths ("/uploads/...") live on the API host, not this site.
+function announcementImageSrc(url) {
+  if (!url) return null;
+  return url.startsWith("/") ? `${API_ORIGIN}${url}` : url;
+}
+
 function AnnouncementBanner({ dismissed, onDismiss }) {
-  const [current, setCurrent] = useState(null);
+  const [current, setCurrent]     = useState(null);
+  const [imageOk, setImageOk]     = useState(false); // picture actually loads
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    if (dismissed) { setCurrent(null); return; }
+    if (dismissed) { setCurrent(null); setShowModal(false); return; }
+    let cancelled = false;
     api.getActiveAnnouncements()
       .then(data => {
-        if (data.announcements?.length > 0) {
-          const a = data.announcements[0];
-          setCurrent({
-            heading:   a.heading,
-            content:   a.content,
-            image:     a.image_url || null,
-            startDate: a.start_date,
-            endDate:   a.end_date,
-          });
-        }
+        if (cancelled || !data.announcements?.length) return;
+        const a = data.announcements[0];
+        const image = announcementImageSrc(a.image_url);
+        setCurrent({ heading: a.heading, content: a.content, image });
+        if (!image) return;
+        // Preload so we never pop up an empty or broken box
+        const probe = new Image();
+        probe.onload  = () => { if (!cancelled) { setImageOk(true); setShowModal(true); } };
+        probe.onerror = () => { if (!cancelled) setImageOk(false); };
+        probe.src = image;
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [dismissed]);
 
+  /* Esc closes the pop-up; lock page scroll while it's open */
+  useEffect(() => {
+    if (!showModal) return;
+    const onKey = e => { if (e.key === "Escape") setShowModal(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showModal]);
+
   if (!current) return null;
+
+  if (showModal && imageOk) {
+    return (
+      <div
+        role="dialog" aria-modal="true" aria-label={current.heading}
+        onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
+        style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(2,8,22,0.82)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem", animation: "annFadeIn 0.3s ease",
+        }}
+      >
+        <div style={{ position: "relative", maxWidth: "min(92vw, 720px)", animation: "annPop 0.35s cubic-bezier(.25,.46,.45,.94)" }}>
+          <img
+            src={current.image} alt={current.heading}
+            style={{ display: "block", maxWidth: "100%", maxHeight: "82vh", width: "auto", height: "auto", borderRadius: 4, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+          />
+          <button
+            onClick={() => setShowModal(false)}
+            aria-label="Close"
+            style={{
+              position: "absolute", top: 10, right: 10, width: 36, height: 36,
+              borderRadius: "50%", border: "1px solid rgba(255,255,255,0.4)",
+              background: "rgba(3,17,46,0.75)", color: C.white, cursor: "pointer",
+              fontSize: 16, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >✕</button>
+        </div>
+        <style>{`
+          @keyframes annFadeIn { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes annPop { from { opacity: 0; transform: scale(0.94) } to { opacity: 1; transform: scale(1) } }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -206,8 +271,15 @@ function AnnouncementBanner({ dismissed, onDismiss }) {
       animation: "slideDown 0.4s ease",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-        {current.image && (
-          <img src={current.image} alt="" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover", flexShrink: 0 }} />
+        {current.image && imageOk && (
+          <button
+            onClick={() => setShowModal(true)}
+            aria-label="View announcement picture"
+            title="View picture"
+            style={{ padding: 0, border: "1px solid rgba(255,255,255,0.35)", borderRadius: 4, background: "none", cursor: "zoom-in", flexShrink: 0, lineHeight: 0 }}
+          >
+            <img src={current.image} alt="" style={{ width: 48, height: 48, borderRadius: 4, objectFit: "cover", display: "block" }} />
+          </button>
         )}
         <div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 15, fontWeight: 600, color: C.white, marginBottom: 2 }}>{current.heading}</div>
