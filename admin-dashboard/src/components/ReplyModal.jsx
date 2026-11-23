@@ -20,7 +20,7 @@ import { F, fmtDate, timeAgo, statusToken } from "../tokens.js";
 const currency = (n) =>
   `M ${Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 const slugName = (name, event) =>
-  `${name.replace(/\s+/g, "_")}-${event.replace(/\s+/g, "_")}`;
+  `${String(name || "Quote").replace(/\s+/g, "_")}-${String(event || "Event").replace(/\s+/g, "_")}`;
 
 /* ── PDF builder ── */
 async function generateQuotePDF(request, items, declinedItems, note) {
@@ -55,14 +55,18 @@ async function generateQuotePDF(request, items, declinedItems, note) {
   doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...GREY);
   doc.text("PREPARED FOR", m+6, y+8);
   doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...BLACK);
-  doc.text(request.name, m+6, y+16);
+  doc.text(String(request.name || ""), m+6, y+16);
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-  doc.text(request.email, m+6, y+23); doc.text(request.phone, m+6, y+29);
+  // Manual (WhatsApp/phone) requests often have no email. jsPDF throws on
+  // undefined/null text, which is what broke PDF generation, so only print
+  // contact lines that actually exist.
+  const contactLines = [request.email, request.phone].filter(Boolean).map(String);
+  contactLines.forEach((line, i) => doc.text(line, m+6, y+23+i*6));
   const rx = m+half+8;
   doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...GREY);
   doc.text("EVENT DETAILS", rx, y+8);
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...BLACK);
-  doc.text(`Type:      ${request.event}`, rx, y+16);
+  doc.text(`Type:      ${request.event || ""}`, rx, y+16);
   // Date — handle single, overnight, and multiple-day events
   const eventDateStr =
     request.duration === "multiple"
@@ -99,7 +103,7 @@ async function generateQuotePDF(request, items, declinedItems, note) {
     if (idx%2===0) { doc.setFillColor(250,251,253); doc.rect(m,y,col,rowH,"F"); }
     doc.setDrawColor(220,225,235); doc.setLineWidth(0.2); doc.line(m,y+rowH,m+col,y+rowH);
     doc.setTextColor(...BLACK); doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-    doc.text(doc.splitTextToSize(item.description, dW-6)[0], m+4, y+6);
+    doc.text(doc.splitTextToSize(String(item.description || ""), dW-6)[0] || "", m+4, y+6);
     // Subtitle (e.g. tent config) printed smaller below description
     if (item.subtitle) {
       doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(130,145,165);
@@ -150,7 +154,7 @@ async function generateQuotePDF(request, items, declinedItems, note) {
       doc.setDrawColor(230,215,185); doc.setLineWidth(0.2); doc.rect(m,y,col,8,"S");
       doc.setFillColor(...AMBER); doc.rect(m,y,2.5,8,"F");
       doc.setFont("helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(...BLACK);
-      doc.text(item.description, m+6, y+5.5); y+=8;
+      doc.text(String(item.description || ""), m+6, y+5.5); y+=8;
       const rLines = doc.splitTextToSize(`Reason: ${item.declineReason}`, col-6);
       doc.setFont("helvetica","italic"); doc.setFontSize(8); doc.setTextColor(...GREY);
       doc.text(rLines, m+6, y+5); y+=rLines.length*5+6;
@@ -308,7 +312,8 @@ export default function ReplyModal({ request, reviseReason, onClose, onQuoteSent
       setPdfDoc(doc); setPdfBlob(blob); setPdfUrl(url); setPdfReady(true);
     } catch(err) {
       console.error(err);
-      alert("PDF failed. Run: npm install jspdf");
+      // Show the real reason instead of a misleading "install jspdf" hint
+      alert(`Could not generate the PDF: ${err?.message || err}`);
     }
     setBuilding(false);
   };
