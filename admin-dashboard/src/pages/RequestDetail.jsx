@@ -132,17 +132,69 @@ function CloseModal({ request, onClose, onConfirm }) {
   );
 }
 
+/* ── Delete confirmation ─────────────────────────────────────── */
+function DeleteModal({ request, onClose, onConfirm }) {
+  const { C, F } = useTheme();
+  const [deleting, setDeleting] = useState(false);
+  const [error,    setError]    = useState("");
+
+  useEffect(() => {
+    const fn = e => { if (e.key === "Escape" && !deleting) onClose(); };
+    window.addEventListener("keydown", fn);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", fn); document.body.style.overflow = ""; };
+  }, [onClose, deleting]);
+
+  const handleDelete = async () => {
+    setDeleting(true); setError("");
+    try {
+      await onConfirm(); // parent removes the request and leaves this page
+    } catch (err) {
+      setError(err?.message || "Could not delete this request. Please try again.");
+      setDeleting(false);
+    }
+  };
+
+  const btn = { cursor:"pointer", padding:"10px 20px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body };
+
+  return (
+    <div onClick={e=>{ if (e.target === e.currentTarget && !deleting) onClose(); }}
+      style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(2,8,22,0.9)", backdropFilter:"blur(6px)", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"1.5rem 1rem", overflowY:"auto", animation:"cmFadeIn 0.2s ease" }}>
+      <div role="dialog" aria-modal="true" className="rr-modal-card" style={{ background:C.surfaceUp, border:"1px solid rgba(217,79,79,0.35)", borderRadius:3, width:"100%", maxWidth:460, padding:"2rem", marginTop:"10vh", position:"relative" }}>
+        <div style={{ fontSize:9, letterSpacing:"0.22em", textTransform:"uppercase", color:C.danger, fontFamily:F.body, fontWeight:600, marginBottom:8 }}>Delete Request</div>
+        <h3 style={{ fontFamily:F.display, fontSize:"1.4rem", fontWeight:500, color:C.textPrimary, margin:"0 0 0.75rem" }}>Delete {request.id}?</h3>
+        <p style={{ color:C.textSecondary, fontSize:"0.85rem", fontFamily:F.body, fontWeight:300, margin:"0 0 0.5rem", lineHeight:1.65 }}>
+          <strong style={{ color:C.textPrimary, fontWeight:600 }}>{request.name}</strong>{request.event ? ` · ${request.event}` : ""}
+        </p>
+        <p style={{ color:C.textSecondary, fontSize:"0.83rem", fontFamily:F.body, fontWeight:300, margin:"0 0 1.5rem", lineHeight:1.65 }}>
+          This permanently removes the request, its notes and any saved quote. Use it for mistakes and test entries only. The number <span style={{ whiteSpace:"nowrap" }}>{request.id}</span> will be given to the next new request.
+        </p>
+        {error && (
+          <div style={{ background:"rgba(217,79,79,0.1)", border:"1px solid rgba(217,79,79,0.25)", borderRadius:2, padding:"9px 12px", color:C.danger, fontSize:"0.82rem", fontFamily:F.body, marginBottom:"1rem" }}>{error}</div>
+        )}
+        <div style={{ display:"flex", justifyContent:"flex-end", gap:10 }}>
+          <button onClick={onClose} disabled={deleting} style={{ ...btn, background:"none", border:`1px solid ${C.border}`, color:C.textSecondary }}>Cancel</button>
+          <button onClick={handleDelete} disabled={deleting} style={{ ...btn, background:C.danger, border:"none", color:C.white, cursor:deleting?"wait":"pointer", opacity:deleting?0.7:1 }}>
+            {deleting ? "Deleting…" : "Delete permanently"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════
    MAIN
 ══════════════════════════════════════════════════════════════ */
 import { useRef } from "react";
 
-export default function RequestDetail({ request, onBack, onUpdate }) {
+export default function RequestDetail({ request, onBack, onUpdate, onDelete }) {
   const { can } = usePermissions();
   const { C, F } = useTheme();
 
   const [showReply, setShowReply]     = useState(false);
   const [showClose, setShowClose]     = useState(false);
+  const [showDelete, setShowDelete]   = useState(false);
   const [notes,     setNotes]         = useState(request.notes ?? "");
   const [notesSaved,setNotesSaved]    = useState(false);
   const [showExpiredPrompt, setShowExpiredPrompt] = useState(false);
@@ -316,6 +368,13 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
               onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.danger; e.currentTarget.style.color=C.danger; }}
               onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.textSecondary; }}
             >Close Request</button>
+          )}
+          {/* DELETE button — for mistakes and test entries */}
+          {onDelete && can("close") && (
+            <button className="rr-touch-btn" onClick={()=>setShowDelete(true)} style={{ background:"transparent", border:"1px solid rgba(217,79,79,0.35)", color:C.danger, cursor:"pointer", padding:"10px 18px", borderRadius:2, fontSize:11, letterSpacing:"0.16em", textTransform:"uppercase", fontWeight:600, fontFamily:F.body, transition:"all 0.2s" }}
+              onMouseEnter={e=>{ e.currentTarget.style.background="rgba(217,79,79,0.1)"; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background="transparent"; }}
+            >Delete</button>
           )}
         </div>
       </div>
@@ -687,6 +746,15 @@ export default function RequestDetail({ request, onBack, onUpdate }) {
           request={request}
           onClose={()=>setShowClose(false)}
           onConfirm={handleClose}
+        />
+      )}
+
+      {/* Delete confirm modal */}
+      {showDelete && (
+        <DeleteModal
+          request={request}
+          onClose={()=>setShowDelete(false)}
+          onConfirm={()=>onDelete(request.id)}
         />
       )}
 
