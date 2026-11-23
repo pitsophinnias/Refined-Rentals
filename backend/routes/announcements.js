@@ -3,17 +3,68 @@
  *
  * GET    /api/announcements          — all (admin, includes archived)
  * GET    /api/announcements/active   — currently active only (public, customer site)
+ * POST   /api/announcements/upload   — upload announcement image (admin)
  * POST   /api/announcements          — create (admin)
  * PATCH  /api/announcements/:id      — update any fields (admin)
  * DELETE /api/announcements/:id      — hard delete (admin)
  */
 
 const router      = require("express").Router();
+const multer      = require("multer");
+const path        = require("path");
+const fs          = require("fs");
 const { v4: uuidv4 } = require("uuid");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField, isValidDate } = require("../lib/validate.js");
 const { can } = require("../lib/roles.js");
+
+/* ── Image uploads ────────────────────────────────────────────
+ * Images used to be sent as base64 inside the JSON body and stored in
+ * image_url. cleanField() caps that column at 500 chars, so every image was
+ * cut off and the customer site got a broken picture. Images are now saved
+ * as files under /uploads/announcements and image_url holds the short path.
+ */
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "announcements");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase().slice(1);
+    if (/^(jpe?g|png|gif|webp)$/.test(ext)) return cb(null, true);
+    cb(new Error(`File type .${ext} not allowed`), false);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10mb
+});
+
+// Only accept image paths we produced ourselves, or a plain http(s) URL.
+// Rejects base64 data URIs so the old truncation bug can't come back.
+function cleanImageUrl(value) {
+  const v = cleanField(value, 500);
+  if (!v) return null;
+  if (/^\/uploads\/announcements\/[\w.-]+$/.test(v)) return v;
+  if (/^https?:\/\//i.test(v)) return v;
+  return undefined; // invalid
+}
+
+/* ── POST /api/announcements/upload — image upload (admin) ──── */
+router.post("/upload", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "announcements")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
+  upload.single("file")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Upload failed" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    res.status(201).json({ url: `/uploads/announcements/${req.file.filename}` });
+  });
+});
 
 /* ── GET /api/announcements/active — public ─────────────────── */
 // Must be defined before /:id to avoid "active" being treated as an id
@@ -65,13 +116,18 @@ router.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "start_date and end_date must be valid dates" });
   }
 
+  const imageUrl = cleanImageUrl(image_url);
+  if (imageUrl === undefined) {
+    return res.status(400).json({ error: "image_url must be an uploaded image path" });
+  }
+
   try {
     const id = uuidv4().slice(0, 20);
     const { rows } = await pool.query(
       `INSERT INTO announcements (id, heading, content, image_url, start_date, end_date)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [id, cleanField(heading, 200), cleanField(content, 5000), cleanField(image_url, 500), start_date, end_date]
+      [id, cleanField(heading, 200), cleanField(content, 5000), imageUrl, start_date, end_date]
     );
     res.status(201).json({ announcement: rows[0] });
   } catch (err) {
@@ -86,7 +142,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const allowed  = ["heading", "content", "image_url", "start_date", "end_date", "active"];
-  const textCols = { heading: 200, content: 5000, image_url: 500 };
+  const textCols = { heading: 200, content: 5000 };
   const updates  = [];
   const values   = [];
 
@@ -102,6 +158,12 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if (val === undefined) continue;
     if (key in textCols && typeof val === "string") {
       val = cleanField(val, textCols[key]) ?? "";
+    }
+    if (key === "image_url") {
+      val = cleanImageUrl(val);
+      if (val === undefined) {
+        return res.status(400).json({ error: "image_url must be an uploaded image path" });
+      }
     }
     values.push(val);
     updates.push(`${key} = $${values.length}`);

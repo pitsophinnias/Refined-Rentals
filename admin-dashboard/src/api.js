@@ -149,6 +149,12 @@ export const gallery = {
 /* ── Announcements ───────────────────────────────────────────── */
 export const announcements = {
   list:   ()         => apiFetch("/announcements"),
+  /* Upload an image file; returns { url: "/uploads/announcements/..." } */
+  uploadImage: (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetchMultipart("/announcements/upload", fd);
+  },
   create: (data)     =>
     apiFetch("/announcements", { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) =>
