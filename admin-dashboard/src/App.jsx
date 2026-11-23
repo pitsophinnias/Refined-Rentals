@@ -236,6 +236,13 @@ function Shell() {
     }
   };
 
+  // Permanent delete (mistakes/tests). Throws so the confirm modal can show the error.
+  const deleteRequest = async (id) => {
+    await requestsApi.delete(id);
+    setSelectedId(null);
+    setRequests(prev => prev.filter(r => r.id !== id));
+  };
+
   const handleRequestCreated = (request) => {
     setRequests(prev => [request, ...prev]);
     setSelectedId(request.id);
@@ -275,7 +282,7 @@ function Shell() {
           <TopBar page={page} onMenuClick={() => setMobileNavOpen(true)} />
           {page === "dashboard"     && <Dashboard requests={requests} setPage={setPage} setSelectedId={handleSelectId} />}
           {page === "requests"      && !selectedRequest && <Requests requests={requests} setSelectedId={setSelectedId} onRequestCreated={handleRequestCreated} />}
-          {page === "requests"      && selectedRequest  && <RequestDetail request={selectedRequest} onBack={handleBack} onUpdate={updateRequest} />}
+          {page === "requests"      && selectedRequest  && <RequestDetail request={selectedRequest} onBack={handleBack} onUpdate={updateRequest} onDelete={deleteRequest} />}
           {page === "gallery"       && <GalleryAdmin />}
           {page === "announcements" && <Announcements />}
           {page === "settings"      && <Settings />}
