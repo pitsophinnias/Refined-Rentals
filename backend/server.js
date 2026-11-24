@@ -14,6 +14,8 @@ const path         = require("path");
 const { initDB, initSettingsDB } = require("./db.js");
 
 const app     = express();
+// Behind Nginx on the VPS: trust the proxy so req.ip and the rate limiters see the real client IP
+app.set("trust proxy", 1);
 const PORT    = process.env.PORT || 3001;
 const isProd  = process.env.NODE_ENV === "production";
 
