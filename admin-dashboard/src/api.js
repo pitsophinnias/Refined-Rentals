@@ -175,6 +175,27 @@ export const system = {
   resolveErrors: (ids) => apiFetch("/system/errors/resolve", { method: "POST", body: JSON.stringify({ ids }) }),
   loginActivity: () => apiFetch("/system/login-activity"),
   logoutEverywhere: (id) => apiFetch(`/system/users/${id}/logout-everywhere`, { method: "POST" }),
+  controls:      () => apiFetch("/system/controls"),
+  setMaintenance:(enabled, message) => apiFetch("/system/maintenance", { method: "PATCH", body: JSON.stringify({ enabled, message }) }),
+  backups:       () => apiFetch("/system/backups"),
+  runBackup:     () => apiFetch("/system/backups/run", { method: "POST" }),
+  // Downloads go through fetch (the token is in a header, not a cookie),
+  // then the browser saves the returned file.
+  downloadBackup: async (name) => {
+    const res = await fetch(`${BASE}/system/backups/files/${encodeURIComponent(name)}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `Download failed: ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  },
 };
 
 /* ── Users + audit log (shared with the client's Settings page) ─ */

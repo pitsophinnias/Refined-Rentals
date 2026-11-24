@@ -14,8 +14,10 @@ async function apiFetch(path, opts = {}) {
     ...opts,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Request failed: ${res.status}`);
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const err = new Error(body.error || `Request failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -28,6 +30,9 @@ export const api = {
   /* Gallery — public. category: "main" (homepage slideshow) or "contact" (contact grid) */
   getGallery: (category) =>
     apiFetch(`/gallery${category ? `?category=${category}` : ""}`),
+
+  /* Site status — maintenance mode, set by the System Admin */
+  getStatus: () => apiFetch("/status"),
 
   /* Announcements — public active only */
   getActiveAnnouncements: () => apiFetch("/announcements/active"),

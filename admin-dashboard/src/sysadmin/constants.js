@@ -1,7 +1,7 @@
 /**
  * sysadmin/constants.js — plain data for the System Admin dashboard.
  * Modeled on Lashes By Retha's sysadmin pages, trimmed to what fits
- * Refined Rentals. System Controls and Backups come in a later PR.
+ * Refined Rentals.
  */
 
 export const SYS_PAGES = [
@@ -9,9 +9,11 @@ export const SYS_PAGES = [
   { id: "users",    label: "Users" },
   { id: "roles",    label: "Roles" },
   { id: "audit",    label: "Audit Log" },
+  { id: "controls", label: "System Controls" },
   { id: "health",   label: "System Health" },
   { id: "errors",   label: "Errors" },
   { id: "logins",   label: "Login Activity" },
+  { id: "backups",  label: "Backups" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -23,7 +25,8 @@ export const ACTION_LABELS = {
   CREATE_USER: "Created User", DELETE_USER: "Removed User", CHANGE_ROLE: "Changed Role",
   RESET_PASSWORD: "Reset Password", CHANGE_OWN_PASSWORD: "Changed Own Password",
   MAKE_SYSADMIN: "Made System Admin", LOGOUT_EVERYWHERE: "Logged Out Everywhere",
-  ERRORS_RESOLVED: "Resolved Errors",
+  ERRORS_RESOLVED: "Resolved Errors", MAINTENANCE_ON: "Maintenance On", MAINTENANCE_OFF: "Maintenance Off",
+  BACKUP_STARTED: "Started Backup", BACKUP_DOWNLOADED: "Downloaded Backup",
   ADD_NOTIFICATION_EMAIL: "Added Notification Email", REMOVE_NOTIFICATION_EMAIL: "Removed Notification Email",
   REQUEST_DELETED: "Request Deleted", MANUAL_REQUEST_CREATED: "Manual Request Created",
   UPDATE_WHATSAPP_NUMBER: "Updated WhatsApp Number",

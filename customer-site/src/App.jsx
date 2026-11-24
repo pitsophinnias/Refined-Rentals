@@ -895,6 +895,38 @@ function Contact({ onQuote }) {
 }
 
 /* ─── Footer ─────────────────────────────────────────────────── */
+/* ─── Maintenance screen ─────────────────────────────────────────
+ * Replaces the whole site while the System Admin has maintenance mode on
+ * (admin → System Controls). Keeps the phone numbers and email reachable.
+ */
+const CONTACT_PHONES = ["+266 6363 0598", "+266 5885 8114"];
+const CONTACT_EMAIL  = "refinedrentals.lso@gmail.com";
+
+function MaintenanceScreen({ message }) {
+  const body = "'DM Sans', system-ui, sans-serif";
+  return (
+    <main style={{ minHeight: "100vh", background: `radial-gradient(ellipse at top, ${C.navyMid}, ${C.navy} 70%)`, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1.25rem", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
+        <img src={LOGO_ICON_B64} alt="Refined Rentals" style={{ width: 84, height: "auto", marginBottom: "1.5rem", opacity: 0.95 }} />
+        <div style={{ fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: C.blue, fontFamily: body, marginBottom: 12 }}>Refined Rentals</div>
+        <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2rem, 6vw, 2.8rem)", fontWeight: 500, color: C.white, margin: "0 0 1rem", lineHeight: 1.15 }}>
+          We'll be back <span style={{ fontStyle: "italic", color: C.blueLight }}>shortly</span>
+        </h1>
+        <p style={{ color: C.slateLight, fontFamily: body, fontWeight: 300, fontSize: "0.98rem", lineHeight: 1.8, margin: "0 0 2rem" }}>{message}</p>
+        <div style={{ borderTop: "1px solid rgba(33,150,196,0.2)", paddingTop: "1.5rem", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: C.slate, fontFamily: body }}>Need a quote now? Call or email us</div>
+          <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
+            {CONTACT_PHONES.map(p => (
+              <a key={p} href={`tel:${p.replace(/\s+/g, "")}`} style={{ color: C.white, fontFamily: body, fontSize: "0.95rem", textDecoration: "none", borderBottom: "1px solid rgba(33,150,196,0.4)", paddingBottom: 2 }}>{p}</a>
+            ))}
+          </div>
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "rgba(255,255,255,0.75)", fontFamily: body, fontSize: "0.9rem", textDecoration: "none" }}>{CONTACT_EMAIL}</a>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function Footer() {
   return (
     <footer style={{ background: "#010a1a", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "2.25rem clamp(1.25rem, 5vw, 4rem)" }}>
@@ -978,7 +1010,8 @@ function QuoteModal({ preselected, onClose, onSend }) {
       .then(() => { setSubmitting(false); setSubmitted(true); })
       .catch(err => {
         setSubmitting(false);
-        alert("Something went wrong submitting your request. Please try again or call us directly.");
+        // 503 = maintenance mode: show the System Admin's message instead
+        alert(err.status === 503 ? err.message : "Something went wrong submitting your request. Please try again or call us directly.");
         console.error("Submit error:", err);
       });
   };
@@ -1150,6 +1183,17 @@ export default function App() {
   const [active, setActive] = useState("home");
   const [modal, setModal] = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // Maintenance mode (System Admin). The site renders straight away and only
+  // switches to the maintenance screen if the check says so, so a slow or
+  // failed check never blanks the site.
+  const [maintenance, setMaintenance] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.getStatus()
+      .then(d => { if (!cancelled && d?.maintenance?.enabled) setMaintenance(d.maintenance); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const openQuote = useCallback(s => setModal(s ?? ""), []);
   const closeQuote = useCallback(() => setModal(null), []);
 
@@ -1186,6 +1230,8 @@ export default function App() {
     ids.forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el); });
     return () => obs.disconnect();
   }, []);
+
+  if (maintenance) return <MaintenanceScreen message={maintenance.message} />;
 
   return (
     <div style={{ margin: 0, padding: 0, width: "100%", overflowX: "hidden", background: C.navy }}>
