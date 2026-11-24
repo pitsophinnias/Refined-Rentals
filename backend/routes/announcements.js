@@ -186,17 +186,28 @@ router.patch("/:id", requireAuth, async (req, res) => {
   }
 });
 
-/* ── DELETE /api/announcements/:id — hard delete (admin) ─────── */
+/* ── DELETE /api/announcements/:id — permanent delete of an archived one (admin) */
 router.delete("/:id", requireAuth, async (req, res) => {
   if (!await can(req.admin.id, "announcements")) {
     return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   try {
-    const { rowCount } = await pool.query(
-      "DELETE FROM announcements WHERE id = $1",
+    // Only archived announcements can be deleted, so a live banner can't
+    // disappear by accident. Remove (archive) it first.
+    const { rows } = await pool.query(
+      "DELETE FROM announcements WHERE id = $1 AND active = FALSE RETURNING image_url",
       [req.params.id]
     );
-    if (rowCount === 0) return res.status(404).json({ error: "Announcement not found" });
+    if (rows.length === 0) {
+      const { rowCount } = await pool.query("SELECT 1 FROM announcements WHERE id = $1", [req.params.id]);
+      if (rowCount === 0) return res.status(404).json({ error: "Announcement not found" });
+      return res.status(400).json({ error: "Archive this announcement before deleting it." });
+    }
+    // Clean up the uploaded picture too (only files we saved ourselves)
+    const img = rows[0].image_url;
+    if (img && /^\/uploads\/announcements\/[\w.-]+$/.test(img)) {
+      fs.unlink(path.join(UPLOAD_DIR, path.basename(img)), () => {});
+    }
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Delete announcement error:", err);
