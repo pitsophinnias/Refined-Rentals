@@ -92,6 +92,7 @@ function Feedback({ msg, type="success", C }) {
 
 function RoleBadge({ role, C }) {
   const ROLE_COLORS = {
+    SYSADMIN:{ bg: "rgba(217,79,79,0.12)",      color: C.danger  },
     ADMIN:   { bg: C.blueDim,                  color: C.blue    },
     MANAGER: { bg: "rgba(30,145,96,0.1)",       color: "#1e9160" },
     FINANCE: { bg: "rgba(130,90,200,0.1)",      color: "#8a5ac8" },
@@ -101,7 +102,7 @@ function RoleBadge({ role, C }) {
   const col = ROLE_COLORS[role] || ROLE_COLORS.VIEWER;
   return (
     <span style={{ fontSize:9, letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:F.body, fontWeight:700, padding:"2px 8px", borderRadius:10, background:col.bg, color:col.color }}>
-      {role}
+      {role === "SYSADMIN" ? "System Admin" : role}
     </span>
   );
 }
@@ -244,7 +245,11 @@ function TabUsers({ currentAdminId, C }) {
                       </div>
                     </div>
                   </div>
-                  {u.id!==currentAdminId&&(
+                  {/* System Admin accounts are managed from the System Admin dashboard */}
+                  {u.role==="SYSADMIN"&&u.id!==currentAdminId&&(
+                    <span style={{fontSize:C.fontSizeSm-1,color:C.textDim,fontFamily:F.body}}>Website support account · managed by the system admin</span>
+                  )}
+                  {u.id!==currentAdminId&&u.role!=="SYSADMIN"&&(
                     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                       <select value={u.role} onChange={e=>changeRole(u.id,e.target.value)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:2,padding:"6px 10px",color:C.textPrimary,fontFamily:F.body,fontSize:C.fontSizeSm,cursor:"pointer",outline:"none"}}>
                         <option value="ADMIN">Admin</option>
@@ -298,6 +303,7 @@ function TabUsers({ currentAdminId, C }) {
       </Card>
       <Card C={C} title="Role Permissions">
         {[
+          ["SYSADMIN","Website support: system pages only. No access to quotes, gallery or announcements"],
           ["ADMIN",   "Full access, including user management and system settings"],
           ["MANAGER", "Full operational access: quotes, gallery, announcements, activity log"],
           ["FINANCE", "Quote and pricing focused: build, send, revise and close quotes"],
@@ -451,6 +457,7 @@ const ACTION_LABELS = {
   ADD_NOTIFICATION_EMAIL:"Added Notification Email",REMOVE_NOTIFICATION_EMAIL:"Removed Notification Email",
   REQUEST_DELETED:"Request Deleted",MANUAL_REQUEST_CREATED:"Manual Request Created",
   UPDATE_WHATSAPP_NUMBER:"Updated WhatsApp Number",
+  MAKE_SYSADMIN:"Made System Admin",
 };
 
 function ActionBadge({ action, C }) {

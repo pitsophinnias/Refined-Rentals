@@ -16,11 +16,21 @@ import Settings       from "./pages/Settings.jsx";
 import GalleryAdmin   from "./pages/GalleryAdmin.jsx";
 import Announcements  from "./pages/Announcements.jsx";
 import Sidebar        from "./components/Sidebar.jsx";
+import { clearPermissionsCache } from "./usePermissions.js";
+import SysSidebar     from "./sysadmin/SysSidebar.jsx";
+import { SYS_PAGE_LABELS } from "./sysadmin/constants.js";
+import SysOverview    from "./sysadmin/pages/Overview.jsx";
+import SysUsers       from "./sysadmin/pages/Users.jsx";
+import SysRoles       from "./sysadmin/pages/Roles.jsx";
+import SysAuditLog    from "./sysadmin/pages/AuditLog.jsx";
+import SysSettings    from "./sysadmin/pages/SysSettings.jsx";
 
 /* ── TopBar ── */
-function TopBar({ page, onMenuClick }) {
+const BUSINESS_PAGE_LABELS = { dashboard: "Dashboard", requests: "Quote Requests", settings: "Settings", gallery: "Gallery", announcements: "Announcements" };
+
+function TopBar({ page, onMenuClick, labels = BUSINESS_PAGE_LABELS }) {
   const { C, F, isDark, toggle } = useTheme();
-  const PAGE_LABELS = { dashboard: "Dashboard", requests: "Quote Requests", settings: "Settings", gallery: "Gallery", announcements: "Announcements" };
+  const PAGE_LABELS = labels;
 
   return (
     <div className="rr-topbar" style={{ position: "sticky", top: 0, zIndex: 50, background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "0 2.5rem", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, transition: "background 0.3s, border-color 0.3s" }}>
@@ -187,13 +197,24 @@ function Shell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminId,    setAdminId]    = useState(null);
+  // SYSADMIN gets its own dashboard; every other role gets the business one.
+  const [role,       setRole]       = useState(null);
+  const [sysPage,    setSysPage]    = useState("overview");
+  const isSysadmin = role === "SYSADMIN";
 
-  // Verify session cookie on mount
+  const applyMe = (data) => {
+    setAdminEmail(data.admin.email);
+    setAdminId(data.admin.id);
+    setRole(data.admin.role || "ADMIN");
+  };
+
+  // Verify the stored session on mount
   useEffect(() => {
     const token = getToken();
     if (!token) { setAuthed(false); setAuthChecked(true); return; }
     authApi.me()
-      .then(data => { setAdminEmail(data.admin.email); setAuthed(true); setAuthChecked(true); })
+      .then(data => { applyMe(data); setAuthed(true); setAuthChecked(true); })
       .catch(() => { clearToken(); setAuthed(false); setAuthChecked(true); });
   }, []);
 
@@ -204,9 +225,9 @@ function Shell() {
     document.head.appendChild(link);
   }, []);
 
-  // Load + poll requests from API
+  // Load + poll requests from API (business dashboard only)
   useEffect(() => {
-    if (!authed) return;
+    if (!authed || !role || role === "SYSADMIN") return;
     const load = () =>
       requestsApi.list()
         .then(data => { setRequests(data.requests || []); setLoading(false); })
@@ -214,7 +235,7 @@ function Shell() {
     load();
     const iv = setInterval(load, 15000); // refresh every 15s
     return () => clearInterval(iv);
-  }, [authed]);
+  }, [authed, role]);
 
   const updateRequest = async (updated) => {
     // Optimistic update
@@ -251,7 +272,11 @@ function Shell() {
   const handleSignOut = async () => {
     try { await authApi.logout(); } catch {}
     clearToken();
+    clearPermissionsCache();
     setAuthed(false);
+    setRole(null);
+    setSysPage("overview");
+    setPage("dashboard");
     setRequests([]);
   };
 
@@ -266,7 +291,32 @@ function Shell() {
   if (!authed) return (
     <>
       <GlobalStyles C={C} />
-      <Login onLogin={(token, email) => { setToken(token); setAdminEmail(email); setAuthed(true); }} />
+      <Login onLogin={async (token, email) => {
+        setToken(token);
+        setAdminEmail(email);
+        clearPermissionsCache();
+        // Need the role before choosing which dashboard to show
+        try { applyMe(await authApi.me()); } catch { setRole("VIEWER"); }
+        setAuthed(true);
+      }} />
+    </>
+  );
+
+  if (isSysadmin) return (
+    <>
+      <GlobalStyles C={C} />
+      <div style={{ display: "flex", minHeight: "100vh", background: C.bg, transition: "background 0.3s" }}>
+        {mobileNavOpen && <div className="rr-sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+        <SysSidebar page={sysPage} setPage={p => { setSysPage(p); setMobileNavOpen(false); }} onSignOut={handleSignOut} adminEmail={adminEmail} mobileOpen={mobileNavOpen} onCloseMobile={() => setMobileNavOpen(false)} />
+        <main style={{ flex: 1, overflowY: "auto", minHeight: "100vh", minWidth: 0 }}>
+          <TopBar page={sysPage} labels={SYS_PAGE_LABELS} onMenuClick={() => setMobileNavOpen(true)} />
+          {sysPage === "overview" && <SysOverview setPage={setSysPage} />}
+          {sysPage === "users"    && <SysUsers currentAdminId={adminId} />}
+          {sysPage === "roles"    && <SysRoles />}
+          {sysPage === "audit"    && <SysAuditLog />}
+          {sysPage === "settings" && <SysSettings adminEmail={adminEmail} />}
+        </main>
+      </div>
     </>
   );
 

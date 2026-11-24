@@ -18,7 +18,10 @@
  * DELETE /api/settings/notifications/:id  — remove
  *
  * Audit log
- * GET    /api/settings/audit              — list (filterable by admin/entity)
+ * GET    /api/settings/audit              — list (filterable by admin/entity/action)
+ *
+ * The System Admin (SYSADMIN) can use the user routes too. Only a system
+ * admin can create, change, reset or remove a System Admin account.
  */
 
 const router      = require("express").Router();
@@ -26,15 +29,27 @@ const bcrypt      = require("bcrypt");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField } = require("../lib/validate.js");
-const { can } = require("../lib/roles.js");
+const { can, getRole, ALL_ROLES, isSysadminRole } = require("../lib/roles.js");
 
 /* ── Helpers ─────────────────────────────────────────────────── */
+// Who can manage users: the business Admin and the System Admin.
 async function isAdmin(adminId) {
-  const { rows } = await pool.query(
-    "SELECT role FROM admin_roles WHERE admin_id = $1",
-    [adminId]
-  );
-  return rows.length === 0 || rows[0].role === "ADMIN"; // first user has no role row = ADMIN
+  const role = await getRole(adminId); // first user has no role row = ADMIN
+  return role === "ADMIN" || role === "SYSADMIN";
+}
+
+// System admin accounts (and the SYSADMIN role itself) can only be touched by
+// a system admin. Returns an error message, or null when allowed.
+async function sysadminGuard(callerId, targetId, newRole) {
+  const callerIsSys = isSysadminRole(await getRole(callerId));
+  if (callerIsSys) return null;
+  if (newRole && isSysadminRole(newRole)) {
+    return "Only a system admin can assign the System Admin role.";
+  }
+  if (targetId != null && isSysadminRole(await getRole(targetId))) {
+    return "System admin accounts can only be changed by a system admin.";
+  }
+  return null;
 }
 
 async function logAction(pool, adminId, adminEmail, action, entity, entityId, detail) {
@@ -87,9 +102,11 @@ router.post("/users", requireAuth, async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: "Invalid email address" });
   }
-  if (!["ADMIN", "MANAGER", "FINANCE", "STAFF", "VIEWER"].includes(role)) {
+  if (!ALL_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
+  const guardErr = await sysadminGuard(req.admin.id, null, role);
+  if (guardErr) return res.status(403).json({ error: guardErr });
   if (password.length < 8) {
     return res.status(400).json({ error: "Password must be at least 8 characters" });
   }
@@ -131,14 +148,21 @@ router.patch("/users/:id/role", requireAuth, async (req, res) => {
   }
 
   const { role } = req.body;
-  if (!["ADMIN", "MANAGER", "FINANCE", "STAFF", "VIEWER"].includes(role)) {
+  if (!ALL_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
   const targetId = Number(req.params.id);
   if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user ID" });
+  // Changing your own role is how people lock themselves out; ask another admin.
+  if (targetId === req.admin.id) return res.status(400).json({ error: "You cannot change your own role" });
 
   try {
+    const { rowCount } = await pool.query("SELECT 1 FROM admins WHERE id = $1", [targetId]);
+    if (rowCount === 0) return res.status(404).json({ error: "User not found" });
+    const guardErr = await sysadminGuard(req.admin.id, targetId, role);
+    if (guardErr) return res.status(403).json({ error: guardErr });
+
     if (role === "ADMIN") {
       await pool.query("DELETE FROM admin_roles WHERE admin_id = $1", [targetId]);
     } else {
@@ -176,6 +200,9 @@ router.patch("/users/:id/password", requireAuth, async (req, res) => {
   if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
+    const guardErr = await sysadminGuard(req.admin.id, targetId, null);
+    if (guardErr) return res.status(403).json({ error: guardErr });
+
     const hash = await bcrypt.hash(password, 12);
     const { rowCount } = await pool.query(
       "UPDATE admins SET password_hash = $1 WHERE id = $2",
@@ -208,6 +235,8 @@ router.delete("/users/:id", requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query("SELECT email FROM admins WHERE id = $1", [targetId]);
     if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+    const guardErr = await sysadminGuard(req.admin.id, targetId, null);
+    if (guardErr) return res.status(403).json({ error: guardErr });
 
     await pool.query("DELETE FROM admins WHERE id = $1", [targetId]);
 
@@ -272,8 +301,13 @@ router.patch("/account/password", requireAuth, async (req, res) => {
 
 const DEFAULT_WHATSAPP_NUMBER = "+26663840950";
 
+// Business settings stay with the business Admin, not the System Admin.
+async function isBusinessAdmin(adminId) {
+  return (await getRole(adminId)) === "ADMIN";
+}
+
 router.get("/general", requireAuth, async (req, res) => {
-  if (!await isAdmin(req.admin.id)) {
+  if (!await isBusinessAdmin(req.admin.id)) {
     return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   try {
@@ -286,7 +320,7 @@ router.get("/general", requireAuth, async (req, res) => {
 });
 
 router.patch("/general", requireAuth, async (req, res) => {
-  if (!await isAdmin(req.admin.id)) {
+  if (!await isBusinessAdmin(req.admin.id)) {
     return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
   const { whatsapp_number } = req.body;
@@ -413,7 +447,7 @@ router.get("/audit", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "You do not have permission to perform this action." });
   }
 
-  const { admin_id, entity_id, limit = 50, offset = 0 } = req.query;
+  const { admin_id, entity_id, action, limit = 50, offset = 0 } = req.query;
 
   const conditions = [];
   const values     = [];
@@ -425,6 +459,10 @@ router.get("/audit", requireAuth, async (req, res) => {
   if (entity_id) {
     values.push(entity_id);
     conditions.push(`entity_id = $${values.length}`);
+  }
+  if (action) {
+    values.push(String(action));
+    conditions.push(`action = $${values.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";

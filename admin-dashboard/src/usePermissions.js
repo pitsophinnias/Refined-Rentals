@@ -13,6 +13,7 @@ import { auth as authApi } from "./api.js";
 
 /* ── Permission map — mirrors the backend ────────────────────── */
 const ROLE_PERMISSIONS = {
+  SYSADMIN: ["users","activity","system"],
   ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications","settings"],
   MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications","settings"],
   FINANCE: ["view","quote","close","notifications"],
@@ -21,6 +22,7 @@ const ROLE_PERMISSIONS = {
 };
 
 export const ROLE_LABELS = {
+  SYSADMIN: "System Admin",
   ADMIN:   "Admin",
   MANAGER: "Manager",
   FINANCE: "Finance",
@@ -29,6 +31,7 @@ export const ROLE_LABELS = {
 };
 
 export const ROLE_DESCRIPTIONS = {
+  SYSADMIN: "System access only: users, roles, audit log and system health. No access to quotes, gallery or announcements",
   ADMIN:   "Full access, including user management and system settings",
   MANAGER: "Full operational access: quotes, gallery, announcements, activity log",
   FINANCE: "Quote and pricing focused: can build, send, revise and close quotes",
@@ -36,11 +39,22 @@ export const ROLE_DESCRIPTIONS = {
   VIEWER:  "Read only: cannot make any changes",
 };
 
+// Business roles the client's Admin can assign. SYSADMIN is assigned only by a
+// System Admin, from the System Admin dashboard.
 export const ALL_ROLES = ["ADMIN", "MANAGER", "FINANCE", "STAFF", "VIEWER"];
+export const SYSADMIN_ASSIGNABLE_ROLES = ["SYSADMIN", ...ALL_ROLES];
+export const ROLE_PERMISSIONS_MAP = ROLE_PERMISSIONS;
 
 let _cachedRole  = null;
 let _cacheStamp  = 0;
 const CACHE_TTL  = 60 * 1000; // re-fetch role every 60 seconds
+
+// Call on sign-out so the next person to log in on this tab doesn't inherit
+// the previous user's cached role for up to a minute.
+export function clearPermissionsCache() {
+  _cachedRole = null;
+  _cacheStamp = 0;
+}
 
 export function usePermissions() {
   const [role,    setRole]    = useState(_cachedRole || "VIEWER");

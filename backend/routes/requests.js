@@ -247,6 +247,10 @@ router.post("/manual", requireAuth, async (req, res) => {
 
 /* ── GET /api/requests — list (admin) ───────────────────────── */
 router.get("/", requireAuth, async (req, res) => {
+  // Every business role has "view"; the System Admin deliberately doesn't.
+  if (!await can(req.admin.id, "view")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
   const { status, search, sort = "submitted_at", order = "desc" } = req.query;
 
   // Whitelist sort columns to prevent injection
@@ -292,6 +296,9 @@ router.get("/", requireAuth, async (req, res) => {
 
 /* ── GET /api/requests/:id — single (admin) ─────────────────── */
 router.get("/:id", requireAuth, async (req, res) => {
+  if (!await can(req.admin.id, "view")) {
+    return res.status(403).json({ error: "You do not have permission to perform this action." });
+  }
   if (!isValidId(req.params.id)) {
     return res.status(400).json({ error: "Invalid request ID format" });
   }
