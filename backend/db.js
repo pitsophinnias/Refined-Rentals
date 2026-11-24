@@ -78,6 +78,9 @@ const SCHEMA = `
     uploaded_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
   );
 
+  -- "main" = homepage slideshow, "contact" = contact section images
+  ALTER TABLE gallery ADD COLUMN IF NOT EXISTS category VARCHAR(20) NOT NULL DEFAULT 'main';
+
   CREATE TABLE IF NOT EXISTS announcements (
     id          VARCHAR(20)  PRIMARY KEY,
     heading     TEXT         NOT NULL,
