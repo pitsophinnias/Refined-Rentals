@@ -2,22 +2,25 @@
  * routes/auth.js
  *
  * POST /api/auth/login   — validate credentials, return JWT in response body
- * POST /api/auth/logout  — stateless, client discards token
+ * POST /api/auth/logout  — ends this login's session (the client also discards the token)
  * GET  /api/auth/me      — verify token, return admin info
  */
 
 const router   = require("express").Router();
 const bcrypt   = require("bcrypt");
 const jwt      = require("jsonwebtoken");
+const crypto   = require("crypto");
 const { pool } = require("../db.js");
+const { lockStatus, clearOwnFailures } = require("../lib/loginLockout.js");
+const { getSessionSettings } = require("../lib/sessionSettings.js");
 require("dotenv").config();
 
-// The site sits behind Cloudflare, so req.ip is a Cloudflare address; Cloudflare
-// passes the visitor's real IP in CF-Connecting-IP. Display only, never trusted
-// for security decisions.
+// Nginx resolves the real visitor IP from Cloudflare (set_real_ip_from in
+// /etc/nginx/conf.d/cloudflare-realip.conf), so req.ip is the visitor. The
+// CF-Connecting-IP header itself is never trusted: anyone reaching the server
+// directly could fake it to dodge the login lockout.
 function clientIp(req) {
-  const cf = req.headers["cf-connecting-ip"];
-  return String((typeof cf === "string" && cf.trim()) || req.ip || "");
+  return String(req.ip || "");
 }
 
 /* For the System Admin's Login Activity page. Never blocks a login. */
@@ -42,6 +45,16 @@ router.post("/login", async (req, res) => {
   }
 
   try {
+    // Too many recent failures from this IP or for this email? (see lib/loginLockout.js)
+    try {
+      const lock = await lockStatus(clientIp(req), email);
+      if (lock.locked) {
+        return res.status(429).json({ error: `Too many failed attempts. Please wait ${lock.minutesLeft} minute${lock.minutesLeft === 1 ? "" : "s"} and try again.` });
+      }
+    } catch (err) {
+      console.error("Lockout check error:", err); // fail open, the rate limiter still applies
+    }
+
     const { rows } = await pool.query(
       "SELECT * FROM admins WHERE email = $1",
       [email.trim().toLowerCase()]
@@ -59,15 +72,20 @@ router.post("/login", async (req, res) => {
 
     const admin = rows[0];
     await recordLogin(req, admin.id, admin.email, true);
+    await clearOwnFailures(clientIp(req), admin.email).catch(() => {});
+
+    const { maxHours } = await getSessionSettings();
+    const jti = crypto.randomUUID();
+    await pool.query("INSERT INTO sessions (jti, admin_id) VALUES ($1, $2)", [jti, admin.id]);
     const token = jwt.sign(
-      { id: admin.id, email: admin.email, tv: admin.token_version || 0 },
+      { id: admin.id, email: admin.email, tv: admin.token_version || 0, jti },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "8h" }
+      { expiresIn: `${maxHours}h` }
     );
 
     res.json({
       token,
-      admin: { id: admin.id, email: admin.email },
+      admin: { id: admin.id, email: admin.email, must_change_password: admin.must_change_password === true },
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -75,8 +93,16 @@ router.post("/login", async (req, res) => {
   }
 });
 
-/* ── Logout — stateless, client discards token ───────────────── */
-router.post("/logout", (req, res) => {
+/* ── Logout — ends this session server-side ──────────────────── */
+router.post("/logout", async (req, res) => {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      // ignoreExpiration: an expired token can still be signed out cleanly
+      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET, { ignoreExpiration: true });
+      if (payload.jti) await pool.query("UPDATE sessions SET revoked_at = NOW() WHERE jti = $1 AND revoked_at IS NULL", [payload.jti]);
+    } catch { /* invalid token: nothing to end */ }
+  }
   res.json({ message: "Logged out" });
 });
 
@@ -84,7 +110,7 @@ router.post("/logout", (req, res) => {
 router.get("/me", require("../middleware/auth.js"), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT a.id, a.email, a.created_at,
+      `SELECT a.id, a.email, a.created_at, a.must_change_password,
               COALESCE(r.role, 'ADMIN') AS role
        FROM admins a
        LEFT JOIN admin_roles r ON r.admin_id = a.id

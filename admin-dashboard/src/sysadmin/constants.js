@@ -13,6 +13,7 @@ export const SYS_PAGES = [
   { id: "health",   label: "System Health" },
   { id: "errors",   label: "Errors" },
   { id: "logins",   label: "Login Activity" },
+  { id: "security", label: "Security" },
   { id: "backups",  label: "Backups" },
   { id: "settings", label: "Settings" },
 ];
@@ -27,6 +28,8 @@ export const ACTION_LABELS = {
   MAKE_SYSADMIN: "Made System Admin", LOGOUT_EVERYWHERE: "Logged Out Everywhere",
   ERRORS_RESOLVED: "Resolved Errors", MAINTENANCE_ON: "Maintenance On", MAINTENANCE_OFF: "Maintenance Off",
   BACKUP_STARTED: "Started Backup", BACKUP_DOWNLOADED: "Downloaded Backup",
+  FORCE_PASSWORD_CHANGE: "Forced Password Change", LOCKOUT_CLEARED: "Unblocked Login",
+  SESSION_SETTINGS_CHANGED: "Changed Session Settings",
   ADD_NOTIFICATION_EMAIL: "Added Notification Email", REMOVE_NOTIFICATION_EMAIL: "Removed Notification Email",
   REQUEST_DELETED: "Request Deleted", MANUAL_REQUEST_CREATED: "Manual Request Created",
   UPDATE_WHATSAPP_NUMBER: "Updated WhatsApp Number",

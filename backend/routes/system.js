@@ -13,6 +13,10 @@
  * GET  /api/system/backups                        — backup runs, files on disk, warnings
  * POST /api/system/backups/run                    — start a backup now
  * GET  /api/system/backups/files/:name            — download one backup file
+ * GET  /api/system/security                       — checklist, server checks, passwords, lockouts, sessions (?fresh=1 re-runs server checks)
+ * POST /api/system/security/users/:id/password-change — { required } force (or cancel) a password change at next sign-in
+ * POST /api/system/security/lockouts/clear        — { type: "ip"|"email", value } unblock
+ * PATCH /api/system/security/session              — { maxHours, idleMinutes }
  */
 
 const router      = require("express").Router();
@@ -21,6 +25,10 @@ const path        = require("path");
 const { execSync, spawn } = require("child_process");
 const { getMaintenance, setMaintenance } = require("../lib/systemSettings.js");
 const { BACKUP_DIR, KEEP_DAYS, FILE_RE, listBackupFiles } = require("../lib/backups.js");
+const { serverChecks } = require("../lib/serverChecks.js");
+const { currentLockouts, clearFailures, WINDOW_MINUTES, IP_LIMIT, EMAIL_LIMIT } = require("../lib/loginLockout.js");
+const { getSessionSettings, setSessionSettings, MAX_HOURS_OPTIONS, IDLE_OPTIONS } = require("../lib/sessionSettings.js");
+const { directTraffic } = require("../lib/originWatch.js");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { getRole, isSysadminRole } = require("../lib/roles.js");
@@ -43,6 +51,7 @@ const SECURITY_ACTIONS = [
   "CREATE_USER", "DELETE_USER", "CHANGE_ROLE", "RESET_PASSWORD",
   "CHANGE_OWN_PASSWORD", "MAKE_SYSADMIN", "LOGOUT_EVERYWHERE",
   "MAINTENANCE_ON", "MAINTENANCE_OFF", "BACKUP_DOWNLOADED",
+  "FORCE_PASSWORD_CHANGE", "LOCKOUT_CLEARED", "SESSION_SETTINGS_CHANGED",
 ];
 
 router.get("/overview", async (req, res) => {
@@ -289,6 +298,7 @@ router.post("/users/:id/logout-everywhere", async (req, res) => {
       "UPDATE admins SET token_version = token_version + 1 WHERE id = $1 RETURNING email", [id]
     );
     if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+    await pool.query("UPDATE sessions SET revoked_at = NOW() WHERE admin_id = $1 AND revoked_at IS NULL", [id]);
     await audit(req, "LOGOUT_EVERYWHERE", String(id), `Signed ${rows[0].email} out of every device`);
     res.json({ message: "Signed out everywhere", self: id === req.admin.id });
   } catch (err) {
@@ -378,6 +388,134 @@ router.get("/backups/files/:name", async (req, res) => {
   if (!fs.existsSync(full)) return res.status(404).json({ error: "Backup not found" });
   await audit(req, "BACKUP_DOWNLOADED", null, `Downloaded ${name}`);
   res.download(full, name);
+});
+
+/* ── Security ─────────────────────────────────────────────────── */
+const PASSWORD_MAX_AGE_DAYS = 180;
+
+router.get("/security", async (req, res) => {
+  try {
+    const [session, lockouts, server, users, backups] = await Promise.all([
+      getSessionSettings(),
+      currentLockouts(),
+      serverChecks(req.query.fresh === "1"),
+      pool.query(`SELECT a.id, a.email, a.created_at, a.password_changed_at, a.must_change_password,
+                         COALESCE(r.role, 'ADMIN') AS role,
+                         (SELECT MAX(created_at) FROM login_events l WHERE l.admin_id = a.id AND l.success) AS last_login_at,
+                         (SELECT COUNT(*)::int FROM sessions s WHERE s.admin_id = a.id AND s.revoked_at IS NULL
+                            AND s.issued_at > NOW() - make_interval(hours => $1)
+                            AND ($2::int = 0 OR s.last_seen_at > NOW() - make_interval(mins => $2::int))) AS open_sessions
+                  FROM admins a LEFT JOIN admin_roles r ON r.admin_id = a.id ORDER BY a.email`,
+                [(await getSessionSettings()).maxHours, (await getSessionSettings()).idleMinutes]),
+      pool.query(`SELECT MAX(finished_at) FILTER (WHERE status = 'success') AS last_success, COUNT(*)::int AS runs FROM backup_runs`),
+    ]);
+
+    const c = (id, label, status, detail, fix) => ({ id, label, status, detail, fix: fix || null });
+    const checklist = [];
+    const isProd = process.env.NODE_ENV === "production";
+    checklist.push(c("prod", "Running in production mode", isProd ? "pass" : "fail",
+      isProd ? "NODE_ENV is production: error details are hidden from visitors." : `NODE_ENV is "${process.env.NODE_ENV || "not set"}".`,
+      isProd ? null : "Set NODE_ENV=production in backend/.env and restart."));
+    const jwtLen = (process.env.JWT_SECRET || "").length;
+    checklist.push(c("jwt", "Login tokens use a strong secret", jwtLen >= 48 ? "pass" : "warn",
+      `JWT_SECRET is ${jwtLen} characters long.`,
+      jwtLen >= 48 ? null : "Generate a longer one (node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"), put it in backend/.env and restart. Everyone will need to sign in again."));
+    const origins = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean);
+    const insecure = origins.filter(o => !o.startsWith("https://"));
+    checklist.push(c("origins", "Only the real websites can use the API", origins.length && !insecure.length ? "pass" : "warn",
+      origins.length ? (insecure.length ? `Non-HTTPS origins allowed: ${insecure.join(", ")}.` : `Allowed: ${origins.join(", ")}.`) : "ALLOWED_ORIGINS is empty.",
+      insecure.length || !origins.length ? "List only the https:// addresses of the two sites in ALLOWED_ORIGINS." : null));
+    const from = process.env.EMAIL_FROM || "";
+    checklist.push(c("email", "Emails come from your own domain", from && !/resend\.dev/i.test(from) ? "pass" : "warn",
+      from && !/resend\.dev/i.test(from) ? "EMAIL_FROM uses your domain." : "Emails use Resend's test sender, which only reaches the account owner.",
+      from && !/resend\.dev/i.test(from) ? null : "Set EMAIL_FROM to an address on refinedrentals.co.ls (verified in Resend)."));
+    const lastBackup = backups.rows[0].last_success;
+    const backupOk = lastBackup && Date.now() - new Date(lastBackup).getTime() < 26 * 3600 * 1000;
+    checklist.push(c("backups", "Backups are running", backupOk ? "pass" : "fail",
+      backups.rows[0].runs === 0 ? "No backup has run yet." : backupOk ? "A backup finished in the last 26 hours." : "No successful backup in the last 26 hours.",
+      backupOk ? null : "See the Backups page."));
+    const cf = req.headers["cf-connecting-ip"];
+    checklist.push(c("realip", "Visitor IPs come through Cloudflare correctly",
+      !cf ? "unknown" : cf === req.ip ? "pass" : "fail",
+      !cf ? "Open this page through admin.refinedrentals.co.ls to check." : cf === req.ip ? "Nginx passes the real visitor IP, so login limits apply per person." : "Nginx isn't using Cloudflare's visitor IP, so every visitor looks like a Cloudflare address.",
+      cf && cf !== req.ip ? "Add the Cloudflare set_real_ip_from list to Nginx (see PR 3 deploy notes)." : null));
+    const dt = directTraffic();
+    checklist.push(c("direct", "Nobody is reaching the server around Cloudflare", dt.count === 0 ? "pass" : "warn",
+      dt.count === 0 ? `No direct requests to the API since ${new Date(dt.since).toISOString().slice(0, 16).replace("T", " ")} UTC (last restart).`
+        : `${dt.count} API request${dt.count === 1 ? "" : "s"} reached the server without Cloudflare since the last restart (latest from ${dt.recent[0]?.ip}).`,
+      dt.count === 0 ? null : "Restrict ports 80/443 in the firewall to Cloudflare's IP ranges."));
+    checklist.push(c("idle", "Inactive logins time out", session.idleMinutes > 0 ? "pass" : "warn",
+      session.idleMinutes > 0 ? `Logins end after ${session.idleMinutes} minutes without activity.` : "A login stays open until it expires, even on an unattended computer.",
+      session.idleMinutes > 0 ? null : "Set an inactivity timeout below (60 minutes is a good start)."));
+    const old = users.rows.filter(u => !u.password_changed_at || Date.now() - new Date(u.password_changed_at).getTime() > PASSWORD_MAX_AGE_DAYS * 86400000);
+    checklist.push(c("passwords", "Passwords are recent", old.length === 0 ? "pass" : "warn",
+      old.length === 0 ? `Every password was changed in the last ${PASSWORD_MAX_AGE_DAYS} days.` : `${old.length} account${old.length === 1 ? " hasn't" : "s haven't"} changed password in ${PASSWORD_MAX_AGE_DAYS} days (or since tracking began).`,
+      old.length === 0 ? null : "Use Force password change below, or ask them to change it under Settings → My Account."));
+
+    res.json({
+      checklist,
+      server,
+      session: { ...session, maxHoursOptions: MAX_HOURS_OPTIONS, idleOptions: IDLE_OPTIONS },
+      lockouts: { items: lockouts, windowMinutes: WINDOW_MINUTES, ipLimit: IP_LIMIT, emailLimit: EMAIL_LIMIT },
+      users: users.rows,
+      passwordMaxAgeDays: PASSWORD_MAX_AGE_DAYS,
+      directTraffic: dt,
+    });
+  } catch (err) {
+    console.error("Security page error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/security/users/:id/password-change", async (req, res) => {
+  const id = Number(req.params.id);
+  const required = req.body?.required === true;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid user ID" });
+  if (id === req.admin.id) return res.status(400).json({ error: "Change your own password under Settings" });
+  try {
+    // Forcing also signs them out, so they meet the change screen on their next sign-in
+    const { rows } = await pool.query(
+      `UPDATE admins SET must_change_password = $1, token_version = token_version + CASE WHEN $1 THEN 1 ELSE 0 END
+       WHERE id = $2 RETURNING email`, [required, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+    if (required) await pool.query("UPDATE sessions SET revoked_at = NOW() WHERE admin_id = $1 AND revoked_at IS NULL", [id]);
+    await audit(req, "FORCE_PASSWORD_CHANGE", String(id),
+      required ? `${rows[0].email} must change their password at next sign-in` : `Cancelled the forced password change for ${rows[0].email}`);
+    res.json({ message: "Updated" });
+  } catch (err) {
+    console.error("Force password change error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/security/lockouts/clear", async (req, res) => {
+  const { type, value } = req.body || {};
+  if (!["ip", "email"].includes(type) || !value || String(value).length > 255) {
+    return res.status(400).json({ error: "type must be ip or email, with a value" });
+  }
+  try {
+    const n = await clearFailures(type === "ip" ? { ip: String(value) } : { email: String(value) });
+    await audit(req, "LOCKOUT_CLEARED", null, `Unblocked ${type === "ip" ? "IP" : "email"} ${value} (${n} failed attempt${n === 1 ? "" : "s"} cleared)`);
+    res.json({ cleared: n });
+  } catch (err) {
+    console.error("Clear lockout error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.patch("/security/session", async (req, res) => {
+  try {
+    const before = await getSessionSettings();
+    const after = await setSessionSettings({ maxHours: Number(req.body?.maxHours), idleMinutes: Number(req.body?.idleMinutes) });
+    await audit(req, "SESSION_SETTINGS_CHANGED", null,
+      `Session length ${before.maxHours}h → ${after.maxHours}h, inactivity timeout ${before.idleMinutes || "off"} → ${after.idleMinutes || "off"}${after.idleMinutes ? " min" : ""}`);
+    res.json({ session: after });
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
+    console.error("Session settings error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;

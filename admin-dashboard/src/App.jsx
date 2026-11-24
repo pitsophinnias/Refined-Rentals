@@ -17,6 +17,7 @@ import GalleryAdmin   from "./pages/GalleryAdmin.jsx";
 import Announcements  from "./pages/Announcements.jsx";
 import Sidebar        from "./components/Sidebar.jsx";
 import { clearPermissionsCache } from "./usePermissions.js";
+import ForcePasswordChange from "./components/ForcePasswordChange.jsx";
 import SysSidebar     from "./sysadmin/SysSidebar.jsx";
 import { SYS_PAGE_LABELS } from "./sysadmin/constants.js";
 import SysOverview    from "./sysadmin/pages/Overview.jsx";
@@ -29,6 +30,7 @@ import SysErrors      from "./sysadmin/pages/Errors.jsx";
 import SysLogins      from "./sysadmin/pages/LoginActivity.jsx";
 import SysControls    from "./sysadmin/pages/SystemControls.jsx";
 import SysBackups     from "./sysadmin/pages/Backups.jsx";
+import SysSecurity    from "./sysadmin/pages/Security.jsx";
 
 /* ── TopBar ── */
 const BUSINESS_PAGE_LABELS = { dashboard: "Dashboard", requests: "Quote Requests", settings: "Settings", gallery: "Gallery", announcements: "Announcements" };
@@ -207,11 +209,14 @@ function Shell() {
   const [role,       setRole]       = useState(null);
   const [sysPage,    setSysPage]    = useState("overview");
   const isSysadmin = role === "SYSADMIN";
+  // New accounts, admin resets and the System Admin's "force password change"
+  const [mustChange, setMustChange] = useState(false);
 
   const applyMe = (data) => {
     setAdminEmail(data.admin.email);
     setAdminId(data.admin.id);
     setRole(data.admin.role || "ADMIN");
+    setMustChange(data.admin.must_change_password === true);
   };
 
   // Verify the stored session on mount
@@ -232,15 +237,15 @@ function Shell() {
 
   // Load + poll requests from API (business dashboard only)
   useEffect(() => {
-    if (!authed || !role || role === "SYSADMIN") return;
+    if (!authed || !role || role === "SYSADMIN" || mustChange) return;
     const load = () =>
-      requestsApi.list()
+      requestsApi.listBackground()
         .then(data => { setRequests(data.requests || []); setLoading(false); })
         .catch(() => setLoading(false));
     load();
     const iv = setInterval(load, 15000); // refresh every 15s
     return () => clearInterval(iv);
-  }, [authed, role]);
+  }, [authed, role, mustChange]);
 
   const updateRequest = async (updated) => {
     // Optimistic update
@@ -280,6 +285,7 @@ function Shell() {
     clearPermissionsCache();
     setAuthed(false);
     setRole(null);
+    setMustChange(false);
     setSysPage("overview");
     setPage("dashboard");
     setRequests([]);
@@ -307,6 +313,17 @@ function Shell() {
     </>
   );
 
+  if (mustChange) return (
+    <>
+      <GlobalStyles C={C} />
+      <ForcePasswordChange
+        email={adminEmail}
+        onSignOut={handleSignOut}
+        onDone={async () => { try { applyMe(await authApi.me()); } catch { setMustChange(false); } }}
+      />
+    </>
+  );
+
   if (isSysadmin) return (
     <>
       <GlobalStyles C={C} />
@@ -323,6 +340,7 @@ function Shell() {
           {sysPage === "health"   && <SysHealth setPage={setSysPage} />}
           {sysPage === "errors"   && <SysErrors />}
           {sysPage === "logins"   && <SysLogins currentAdminId={adminId} onSignedOutSelf={handleSignOut} />}
+          {sysPage === "security" && <SysSecurity currentAdminId={adminId} />}
           {sysPage === "backups"  && <SysBackups />}
           {sysPage === "settings" && <SysSettings adminEmail={adminEmail} />}
         </main>

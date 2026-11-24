@@ -38,10 +38,13 @@ async function apiFetch(path, opts = {}, authenticated = true, silentAuth = fals
 
   let res;
   try {
+    // Spread opts first, then headers: a caller passing its own headers
+    // (e.g. X-Background) must not wipe out Authorization.
+    const { headers: extraHeaders, ...rest } = opts;
     res = await fetch(`${BASE}${path}`, {
-      headers: { ...headers, ...opts.headers },
+      ...rest,
+      headers: { ...headers, ...extraHeaders },
       ...(controller ? { signal: controller.signal } : {}),
-      ...opts,
     });
   } catch (err) {
     if (err.name === "AbortError") throw new Error("TIMEOUT");
@@ -56,6 +59,9 @@ async function apiFetch(path, opts = {}, authenticated = true, silentAuth = fals
     // = false) with wrong credentials should just throw so the caller can
     // show an error — not blow away the page before it gets the chance to.
     if (authenticated && !silentAuth) {
+      // Tell the login page why (e.g. "Signed out after 60 minutes of inactivity")
+      const body = await res.json().catch(() => ({}));
+      try { if (body.error) sessionStorage.setItem("rr-signout-reason", body.error); } catch { /* storage off */ }
       clearToken();
       window.location.reload();
       return;
@@ -129,6 +135,9 @@ export const requests = {
     apiFetch(`/requests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id)       =>
     apiFetch(`/requests/${id}`, { method: "DELETE" }),
+  // The dashboard's automatic 15s refresh. Marked as background so it doesn't
+  // count as activity for the inactivity timeout.
+  listBackground: () => apiFetch("/requests", { headers: { "X-Background": "1" } }),
   // Admin manually entering a request on behalf of a WhatsApp/phone client.
   createManual: (data) =>
     apiFetch("/requests/manual", { method: "POST", body: JSON.stringify(data) }),
@@ -177,6 +186,10 @@ export const system = {
   logoutEverywhere: (id) => apiFetch(`/system/users/${id}/logout-everywhere`, { method: "POST" }),
   controls:      () => apiFetch("/system/controls"),
   setMaintenance:(enabled, message) => apiFetch("/system/maintenance", { method: "PATCH", body: JSON.stringify({ enabled, message }) }),
+  security:      (fresh = false) => apiFetch(`/system/security${fresh ? "?fresh=1" : ""}`),
+  forcePasswordChange: (id, required) => apiFetch(`/system/security/users/${id}/password-change`, { method: "POST", body: JSON.stringify({ required }) }),
+  clearLockout:  (type, value) => apiFetch("/system/security/lockouts/clear", { method: "POST", body: JSON.stringify({ type, value }) }),
+  setSession:    (maxHours, idleMinutes) => apiFetch("/system/security/session", { method: "PATCH", body: JSON.stringify({ maxHours, idleMinutes }) }),
   backups:       () => apiFetch("/system/backups"),
   runBackup:     () => apiFetch("/system/backups/run", { method: "POST" }),
   // Downloads go through fetch (the token is in a header, not a cookie),
