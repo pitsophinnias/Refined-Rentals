@@ -8,6 +8,10 @@
 const { pool } = require("../db.js");
 
 const ROLES = {
+  // System admin (the developer): system pages only — users, roles, audit log
+  // and system health. Deliberately has no business permissions, so it can't
+  // see or change quote requests, gallery or announcements.
+  SYSADMIN: ["users","activity","system"],
   ADMIN:   ["view","review","quote","close","notes","gallery","announcements","users","activity","notifications","settings"],
   MANAGER: ["view","review","quote","close","notes","gallery","announcements","activity","notifications","settings"],
   FINANCE: ["view","quote","close","notifications"],
@@ -20,9 +24,12 @@ async function getRole(adminId) {
   return rows.length === 0 ? "ADMIN" : rows[0].role; // first user has no role row = ADMIN
 }
 
+const ALL_ROLES = Object.keys(ROLES);
+const isSysadminRole = (role) => role === "SYSADMIN";
+
 async function can(adminId, permission) {
   const role = await getRole(adminId);
   return (ROLES[role] || ROLES.VIEWER).includes(permission);
 }
 
-module.exports = { ROLES, getRole, can };
+module.exports = { ROLES, ALL_ROLES, getRole, can, isSysadminRole };

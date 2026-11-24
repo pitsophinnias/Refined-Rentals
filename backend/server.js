@@ -98,6 +98,7 @@ app.use("/api/requests",      require("./routes/requests.js"));
 app.use("/api/gallery",       require("./routes/gallery.js"));
 app.use("/api/announcements", require("./routes/announcements.js"));
 app.use("/api/settings",      require("./routes/settings.js"));
+app.use("/api/system",        require("./routes/system.js"));
 
 /* ── Health check ─────────────────────────────────────────────── */
 app.get("/api/health", (req, res) => {

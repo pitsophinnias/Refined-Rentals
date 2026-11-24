@@ -162,3 +162,32 @@ export const announcements = {
   delete: (id)       =>
     apiFetch(`/announcements/${id}`, { method: "DELETE" }),
 };
+
+/* ── System Admin (SYSADMIN) ─────────────────────────────────── */
+export const system = {
+  overview:     () => apiFetch("/system/overview"),
+  auditActions: () => apiFetch("/system/audit-actions"),
+};
+
+/* ── Users + audit log (shared with the client's Settings page) ─ */
+export const users = {
+  list:          ()            => apiFetch("/settings/users"),
+  create:        (data)        => apiFetch("/settings/users", { method: "POST", body: JSON.stringify(data) }),
+  changeRole:    (id, role)    => apiFetch(`/settings/users/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
+  resetPassword: (id, password)=> apiFetch(`/settings/users/${id}/password`, { method: "PATCH", body: JSON.stringify({ password }) }),
+  remove:        (id)          => apiFetch(`/settings/users/${id}`, { method: "DELETE" }),
+};
+
+export const audit = {
+  list: (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null)).toString();
+    return apiFetch(`/settings/audit${q ? `?${q}` : ""}`);
+  },
+};
+
+export const account = {
+  // silentAuth: a wrong current password comes back as 401. Show it as an
+  // error instead of treating it as an expired session and signing out.
+  changePassword: (currentPassword, newPassword) =>
+    apiFetch("/settings/account/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) }, true, true),
+};
