@@ -165,8 +165,16 @@ export const announcements = {
 
 /* ── System Admin (SYSADMIN) ─────────────────────────────────── */
 export const system = {
-  overview:     () => apiFetch("/system/overview"),
-  auditActions: () => apiFetch("/system/audit-actions"),
+  overview:      () => apiFetch("/system/overview"),
+  auditActions:  () => apiFetch("/system/audit-actions"),
+  health:        () => apiFetch("/system/health"),
+  errors:        (params = {}) => {
+    const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null)).toString();
+    return apiFetch(`/system/errors${q ? `?${q}` : ""}`);
+  },
+  resolveErrors: (ids) => apiFetch("/system/errors/resolve", { method: "POST", body: JSON.stringify({ ids }) }),
+  loginActivity: () => apiFetch("/system/login-activity"),
+  logoutEverywhere: (id) => apiFetch(`/system/users/${id}/logout-everywhere`, { method: "POST" }),
 };
 
 /* ── Users + audit log (shared with the client's Settings page) ─ */

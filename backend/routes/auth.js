@@ -12,6 +12,27 @@ const jwt      = require("jsonwebtoken");
 const { pool } = require("../db.js");
 require("dotenv").config();
 
+// The site sits behind Cloudflare, so req.ip is a Cloudflare address; Cloudflare
+// passes the visitor's real IP in CF-Connecting-IP. Display only, never trusted
+// for security decisions.
+function clientIp(req) {
+  const cf = req.headers["cf-connecting-ip"];
+  return String((typeof cf === "string" && cf.trim()) || req.ip || "");
+}
+
+/* For the System Admin's Login Activity page. Never blocks a login. */
+async function recordLogin(req, adminId, email, success) {
+  try {
+    await pool.query(
+      `INSERT INTO login_events (admin_id, email, success, ip, user_agent) VALUES ($1, $2, $3, $4, $5)`,
+      [adminId || null, String(email || "").trim().toLowerCase().slice(0, 255), success,
+       clientIp(req).slice(0, 64), String(req.headers["user-agent"] || "").slice(0, 255)]
+    );
+  } catch (err) {
+    console.error("Login event error:", err);
+  }
+}
+
 /* ── Login ───────────────────────────────────────────────────── */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -32,12 +53,14 @@ router.post("/login", async (req, res) => {
     const match     = await bcrypt.compare(password, hash);
 
     if (rows.length === 0 || !match) {
+      await recordLogin(req, rows[0]?.id, email, false);
       return res.status(401).json({ error: "Incorrect email or password" });
     }
 
     const admin = rows[0];
+    await recordLogin(req, admin.id, admin.email, true);
     const token = jwt.sign(
-      { id: admin.id, email: admin.email },
+      { id: admin.id, email: admin.email, tv: admin.token_version || 0 },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "8h" }
     );

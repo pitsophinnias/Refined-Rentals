@@ -137,6 +137,35 @@ const SETTINGS_SCHEMA = `
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
+  -- Bumped by "log out everywhere": tokens carrying an older number stop working
+  ALTER TABLE admins ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+
+  -- Every admin login attempt, for the System Admin's Login Activity page
+  CREATE TABLE IF NOT EXISTS login_events (
+    id          SERIAL PRIMARY KEY,
+    admin_id    INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    email       VARCHAR(255),
+    success     BOOLEAN NOT NULL,
+    ip          VARCHAR(64),
+    user_agent  VARCHAR(255),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS login_events_created_idx ON login_events (created_at DESC);
+
+  -- Server errors, for the System Admin's Errors page (see lib/errorLog.js)
+  CREATE TABLE IF NOT EXISTS error_log (
+    id          SERIAL PRIMARY KEY,
+    context     VARCHAR(255),
+    message     TEXT,
+    route       VARCHAR(255),
+    method      VARCHAR(10),
+    status      INTEGER,
+    admin_id    INTEGER,
+    resolved_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS error_log_created_idx ON error_log (created_at DESC);
+
   -- Simple key/value store for admin-editable business settings
   -- (e.g. whatsapp_number). Read with a fallback default where used.
   CREATE TABLE IF NOT EXISTS settings (
