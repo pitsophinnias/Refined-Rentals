@@ -640,7 +640,8 @@ function Gallery() {
 
   // Load gallery from API; fall back to DEFAULT_SLIDES if API is unavailable
   useEffect(() => {
-    api.getGallery()
+    // Slideshow only: "contact" images belong to the contact section
+    api.getGallery("main")
       .then(data => {
         if (data.gallery?.length > 0) {
           setSlides(data.gallery.map(item => ({
