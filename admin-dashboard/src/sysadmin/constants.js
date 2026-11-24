@@ -1,8 +1,7 @@
 /**
  * sysadmin/constants.js — plain data for the System Admin dashboard.
  * Modeled on Lashes By Retha's sysadmin pages, trimmed to what fits
- * Refined Rentals. More pages (System Health, Errors, Login Activity,
- * System Controls, Backups) are added in later PRs.
+ * Refined Rentals. System Controls and Backups come in a later PR.
  */
 
 export const SYS_PAGES = [
@@ -10,6 +9,9 @@ export const SYS_PAGES = [
   { id: "users",    label: "Users" },
   { id: "roles",    label: "Roles" },
   { id: "audit",    label: "Audit Log" },
+  { id: "health",   label: "System Health" },
+  { id: "errors",   label: "Errors" },
+  { id: "logins",   label: "Login Activity" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -20,7 +22,8 @@ export const ACTION_LABELS = {
   STATUS_CLOSED: "Request Closed", QUOTE_SENT: "Quote Built & Sent",
   CREATE_USER: "Created User", DELETE_USER: "Removed User", CHANGE_ROLE: "Changed Role",
   RESET_PASSWORD: "Reset Password", CHANGE_OWN_PASSWORD: "Changed Own Password",
-  MAKE_SYSADMIN: "Made System Admin",
+  MAKE_SYSADMIN: "Made System Admin", LOGOUT_EVERYWHERE: "Logged Out Everywhere",
+  ERRORS_RESOLVED: "Resolved Errors",
   ADD_NOTIFICATION_EMAIL: "Added Notification Email", REMOVE_NOTIFICATION_EMAIL: "Removed Notification Email",
   REQUEST_DELETED: "Request Deleted", MANUAL_REQUEST_CREATED: "Manual Request Created",
   UPDATE_WHATSAPP_NUMBER: "Updated WhatsApp Number",
@@ -48,3 +51,19 @@ export const ROLE_COLORS = {
 export const fmtDateTime = (iso) => iso
   ? new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
   : "-";
+
+export const fmtBytes = (n) => {
+  if (n == null) return "-";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0, v = Number(n);
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v < 10 && i > 0 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
+};
+
+export const fmtDuration = (seconds) => {
+  const s = Number(seconds) || 0;
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+};

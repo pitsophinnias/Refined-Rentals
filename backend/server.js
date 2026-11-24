@@ -11,7 +11,8 @@ const helmet       = require("helmet");
 const rateLimit    = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const path         = require("path");
-const { initDB, initSettingsDB } = require("./db.js");
+const { pool, initDB, initSettingsDB } = require("./db.js");
+const { requestErrorContext, enableErrorLog } = require("./lib/errorLog.js");
 
 const app     = express();
 // Behind Nginx on the VPS: trust the proxy so req.ip and the rate limiters see the real client IP
@@ -25,6 +26,9 @@ if (JWT_SECRET.length < 32) {
   console.error("✗ JWT_SECRET must be at least 32 characters. Update your .env file.");
   process.exit(1);
 }
+
+/* ── Error capture for the System Admin's Errors page ────────── */
+app.use(requestErrorContext);
 
 /* ── Helmet — security headers ───────────────────────────────── */
 // This server only ever returns JSON (plus static files under /uploads), so
@@ -116,6 +120,11 @@ app.use((err, req, res, next) => {
   if (err.message?.startsWith("CORS blocked")) {
     return res.status(403).json({ error: err.message });
   }
+  // Client mistakes (malformed JSON, body too large...) are not server errors
+  const status = err.status || err.statusCode;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: status === 413 ? "Request too large." : "Invalid request." });
+  }
   // Log full error internally — never expose stack to client
   console.error(`[${new Date().toISOString()}] Unhandled error:`, err);
   res.status(500).json({
@@ -127,6 +136,7 @@ app.use((err, req, res, next) => {
 async function start() {
   await initDB();
   await initSettingsDB();
+  enableErrorLog(pool);
   app.listen(PORT, () => {
     console.log(`\n✓ Refined Rentals API running on http://localhost:${PORT}`);
     console.log(`  Environment:   ${isProd ? "production" : "development"}`);
