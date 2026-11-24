@@ -1,6 +1,7 @@
 /**
  * pages/Announcements.jsx
- * Active / Archive tabs. Create, remove (archive), restore with new dates.
+ * Active / Archive tabs. Create, remove (archive), restore with new dates,
+ * permanently delete from the archive.
  * Expiring within 24h shows a warning with Extend / Let Expire options.
  */
 
@@ -63,6 +64,8 @@ export default function Announcements() {
   const [form, setForm]         = useState(EMPTY_FORM);
   const [restoreId, setRestoreId] = useState(null);     // id of archive item being restored
   const [restoreForm, setRestoreForm] = useState({ startDate: "", endDate: "" });
+  const [deleteId, setDeleteId]   = useState(null);     // archive item waiting for delete confirm
+  const [deleting, setDeleting]   = useState(false);
   const [extendId, setExtendId] = useState(null);       // id of expiring item being extended
   const [extendDate, setExtendDate] = useState("");
   const imgRef = useRef(null);
@@ -121,6 +124,20 @@ export default function Announcements() {
       const data = await annApi.update(id, { active: false });
       setItems(prev => prev.map(a => a.id === id ? data.announcement : a));
     } catch (err) { alert("Failed to archive: " + err.message); }
+  };
+
+  /* Permanent delete (archive only) */
+  const deleteItem = async (id) => {
+    setDeleting(true);
+    try {
+      await annApi.delete(id);
+      setItems(prev => prev.filter(a => a.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   /* Restore */
@@ -354,11 +371,27 @@ export default function Announcements() {
                               <button onClick={() => setRestoreId(null)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, color: C.textSecondary, cursor: "pointer", padding: "6px 14px", fontFamily: F.body, fontSize: C.fontSizeSm }}>Cancel</button>
                             </div>
                           </div>
+                        ) : deleteId === item.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", maxWidth: 230 }}>
+                            <div style={{ fontSize: C.fontSizeSm, color: C.danger, fontFamily: F.body, textAlign: "right", lineHeight: 1.5 }}>
+                              Delete permanently? This can't be undone.
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => deleteItem(item.id)} disabled={deleting} style={{ background: C.danger, border: "none", borderRadius: 2, color: "#fff", cursor: deleting ? "wait" : "pointer", padding: "6px 14px", fontFamily: F.body, fontSize: C.fontSizeSm, fontWeight: 600, opacity: deleting ? 0.7 : 1 }}>{deleting ? "Deleting…" : "Delete"}</button>
+                              <button onClick={() => setDeleteId(null)} disabled={deleting} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 2, color: C.textSecondary, cursor: "pointer", padding: "6px 14px", fontFamily: F.body, fontSize: C.fontSizeSm }}>Cancel</button>
+                            </div>
+                          </div>
                         ) : (
-                          <button onClick={() => { setRestoreId(item.id); setRestoreForm({ startDate: "", endDate: "" }); }} style={{ background: C.blueDim, border: `1px solid ${C.borderBlue}`, borderRadius: 2, color: C.blue, cursor: "pointer", padding: "7px 14px", fontFamily: F.body, fontSize: C.fontSizeSm, fontWeight: 500, transition: "all 0.2s" }}
+                          <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => { setDeleteId(null); setRestoreId(item.id); setRestoreForm({ startDate: "", endDate: "" }); }} style={{ background: C.blueDim, border: `1px solid ${C.borderBlue}`, borderRadius: 2, color: C.blue, cursor: "pointer", padding: "7px 14px", fontFamily: F.body, fontSize: C.fontSizeSm, fontWeight: 500, transition: "all 0.2s" }}
                             onMouseEnter={e => e.currentTarget.style.background = "rgba(33,150,196,0.18)"}
                             onMouseLeave={e => e.currentTarget.style.background = C.blueDim}
                           >Restore</button>
+                          <button onClick={() => { setRestoreId(null); setDeleteId(item.id); }} style={{ background: "rgba(217,79,79,0.08)", border: "1px solid rgba(217,79,79,0.2)", borderRadius: 2, color: C.danger, cursor: "pointer", padding: "7px 14px", fontFamily: F.body, fontSize: C.fontSizeSm, fontWeight: 500, transition: "all 0.2s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(217,79,79,0.16)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "rgba(217,79,79,0.08)"}
+                          >Delete</button>
+                          </div>
                         )
                       )}
                     </div>
