@@ -13,6 +13,7 @@ const cookieParser = require("cookie-parser");
 const path         = require("path");
 const { pool, initDB, initSettingsDB } = require("./db.js");
 const { requestErrorContext, enableErrorLog } = require("./lib/errorLog.js");
+const { originWatch } = require("./lib/originWatch.js");
 
 const app     = express();
 // Behind Nginx on the VPS: trust the proxy so req.ip and the rate limiters see the real client IP
@@ -53,7 +54,8 @@ app.use(cors({
     cb(new Error(`CORS blocked: ${origin}`));
   },
   methods:     ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  // X-Background marks the dashboard's automatic refresh (see middleware/auth.js)
+  allowedHeaders: ["Content-Type", "Authorization", "X-Background"],
   credentials: true, // needed for cookie support
 }));
 
@@ -76,10 +78,13 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-/* ── Rate limiting — strict on login ─────────────────────────── */
+/* ── Rate limiting — login ───────────────────────────────────────
+ * The real lockout (5 per IP / 10 per email in 15 min, clearable from the
+ * System Admin's Security page) lives in routes/auth.js. This in-memory
+ * limiter is only a backstop against floods, so it's set higher. */
 const loginLimiter = rateLimit({
   windowMs:               15 * 60 * 1000,
-  max:                    5,
+  max:                    30,
   standardHeaders:        true,
   legacyHeaders:          false,
   message:                { error: "Too many login attempts. Please wait 15 minutes before trying again." },
@@ -95,6 +100,9 @@ app.use("/uploads", (req, res, next) => {
   }
   next();
 }, express.static(path.join(__dirname, "uploads")));
+
+/* ── Notice requests that bypass Cloudflare (Security page) ───── */
+app.use("/api", originWatch);
 
 /* ── Routes ──────────────────────────────────────────────────── */
 app.use("/api/status",        require("./routes/status.js"));
@@ -138,10 +146,11 @@ async function start() {
   await initDB();
   await initSettingsDB();
   enableErrorLog(pool);
-  app.listen(PORT, () => {
+  // HOST=127.0.0.1 in production keeps the API reachable only through Nginx
+  app.listen(PORT, process.env.HOST || undefined, () => {
     console.log(`\n✓ Refined Rentals API running on http://localhost:${PORT}`);
     console.log(`  Environment:   ${isProd ? "production" : "development"}`);
-    console.log(`  Login limit:   5 attempts / 15 min per IP`);
+    console.log(`  Login limit:   5 failed / 15 min per IP, 10 per email`);
     console.log(`  Global limit:  100 req / 15 min per IP\n`);
   });
 }

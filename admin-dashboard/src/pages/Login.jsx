@@ -13,7 +13,14 @@ export default function Login({ onLogin }) {
 
   const [email, setEmail]   = useState("");
   const [pass, setPass]     = useState("");
-  const [error, setError]   = useState("");
+  // Shown once if the last session was ended by the server (inactivity, etc.)
+  const [error, setError]   = useState(() => {
+    try {
+      const reason = sessionStorage.getItem("rr-signout-reason");
+      sessionStorage.removeItem("rr-signout-reason");
+      return reason || "";
+    } catch { return ""; }
+  });
   const [canRetry, setCanRetry] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -38,12 +45,13 @@ export default function Login({ onLogin }) {
       const data = await authApi.login(email, pass);
       onLogin(data.token, data.admin.email);
     } catch (err) {
-      if (err.message === "Invalid credentials") {
-        setError("Incorrect email or password.");
-        setCanRetry(false);
-      } else if (err.message === "TIMEOUT" || err.message === "NETWORK_ERROR") {
+      if (err.message === "TIMEOUT" || err.message === "NETWORK_ERROR") {
         setError("Server is starting up, please try again in a moment.");
         setCanRetry(true);
+      } else if (/incorrect|too many|wait/i.test(err.message)) {
+        // The server's own wording: wrong password, or locked out for a while
+        setError(err.message.endsWith(".") ? err.message : `${err.message}.`);
+        setCanRetry(false);
       } else {
         setError("Something went wrong. Please try again.");
         setCanRetry(true);

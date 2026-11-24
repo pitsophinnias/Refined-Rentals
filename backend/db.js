@@ -140,6 +140,21 @@ const SETTINGS_SCHEMA = `
   -- Bumped by "log out everywhere": tokens carrying an older number stop working
   ALTER TABLE admins ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
 
+  -- Password health (System Admin → Security)
+  ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+  ALTER TABLE admins ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+
+  -- One row per login, so the server can enforce idle timeout and max session
+  -- length and revoke a single session on sign-out
+  CREATE TABLE IF NOT EXISTS sessions (
+    jti          VARCHAR(64) PRIMARY KEY,
+    admin_id     INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at   TIMESTAMPTZ
+  );
+  CREATE INDEX IF NOT EXISTS sessions_admin_idx ON sessions (admin_id);
+
   -- Every admin login attempt, for the System Admin's Login Activity page
   CREATE TABLE IF NOT EXISTS login_events (
     id          SERIAL PRIMARY KEY,
@@ -151,6 +166,8 @@ const SETTINGS_SCHEMA = `
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS login_events_created_idx ON login_events (created_at DESC);
+  -- Failed attempts a System Admin has cleared (unblocked) stop counting
+  ALTER TABLE login_events ADD COLUMN IF NOT EXISTS cleared BOOLEAN NOT NULL DEFAULT FALSE;
 
   -- Server errors, for the System Admin's Errors page (see lib/errorLog.js)
   CREATE TABLE IF NOT EXISTS error_log (

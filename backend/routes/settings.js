@@ -114,8 +114,10 @@ router.post("/users", requireAuth, async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 12);
 
+    // The person who set this password knows it, so the new user must pick
+    // their own at first sign-in.
     const { rows } = await pool.query(
-      "INSERT INTO admins (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at",
+      "INSERT INTO admins (email, password_hash, must_change_password) VALUES ($1, $2, TRUE) RETURNING id, email, created_at",
       [email.trim().toLowerCase(), hash]
     );
     const newUser = rows[0];
@@ -199,16 +201,23 @@ router.patch("/users/:id/password", requireAuth, async (req, res) => {
   const targetId = Number(req.params.id);
   if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user ID" });
 
+  if (targetId === req.admin.id) return res.status(400).json({ error: "Change your own password under My Account" });
+
   try {
     const guardErr = await sysadminGuard(req.admin.id, targetId, null);
     if (guardErr) return res.status(403).json({ error: guardErr });
 
+    // A reset password is temporary: it must be changed at next sign-in, and
+    // any device still signed in with the old one is signed out.
     const hash = await bcrypt.hash(password, 12);
     const { rowCount } = await pool.query(
-      "UPDATE admins SET password_hash = $1 WHERE id = $2",
+      `UPDATE admins SET password_hash = $1, must_change_password = TRUE, password_changed_at = NULL,
+              token_version = token_version + 1
+       WHERE id = $2`,
       [hash, targetId]
     );
     if (rowCount === 0) return res.status(404).json({ error: "User not found" });
+    await pool.query("UPDATE sessions SET revoked_at = NOW() WHERE admin_id = $1 AND revoked_at IS NULL", [targetId]);
 
     await logAction(pool, req.admin.id, req.admin.email,
       "RESET_PASSWORD", "admin", String(targetId),
@@ -281,7 +290,10 @@ router.patch("/account/password", requireAuth, async (req, res) => {
     if (!match) return res.status(401).json({ error: "Current password is incorrect" });
 
     const hash = await bcrypt.hash(newPassword, 12);
-    await pool.query("UPDATE admins SET password_hash = $1 WHERE id = $2", [hash, req.admin.id]);
+    await pool.query(
+      "UPDATE admins SET password_hash = $1, password_changed_at = NOW(), must_change_password = FALSE WHERE id = $2",
+      [hash, req.admin.id]
+    );
 
     await logAction(pool, req.admin.id, req.admin.email,
       "CHANGE_OWN_PASSWORD", "admin", String(req.admin.id),
