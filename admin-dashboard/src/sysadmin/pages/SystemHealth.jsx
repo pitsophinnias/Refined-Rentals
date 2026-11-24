@@ -88,6 +88,14 @@ export default function SystemHealth({ setPage }) {
           <Line label="Email (Resend)"><Dot ok={h?.services.email.configured} />{h ? (h.services.email.configured ? "Configured" : "Not configured") : "-"}</Line>
           <Line label="Email sender"><Dot ok={h?.services.email.sender} />{h ? (h.services.email.sender ? "Own domain" : "Test sender") : "-"}</Line>
           <Line label="Extra notification recipients">{h?.services.email.extraRecipients ?? "-"}</Line>
+          <Line label="Last good backup">
+            {h ? <button onClick={() => setPage("backups")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: !h.backup.setUp || h.backup.lastStatus === "failed" ? C.danger : C.textPrimary, fontFamily: F.body, fontSize: C.fontSizeSm }}>
+              {h.backup.setUp ? (h.backup.lastSuccessAt ? new Date(h.backup.lastSuccessAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Never") : "Not set up"} →
+            </button> : "-"}
+          </Line>
+          <Line label="Maintenance mode">
+            {h ? <button onClick={() => setPage("controls")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: h.maintenance.enabled ? "#d4880a" : C.textPrimary, fontFamily: F.body, fontSize: C.fontSizeSm }}>{h.maintenance.enabled ? "ON" : "Off"} →</button> : "-"}
+          </Line>
           <Line label="Unresolved errors (24h)">
             {h ? <button onClick={() => setPage("errors")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: h.errorsLast24h ? C.danger : C.textPrimary, fontFamily: F.body, fontSize: C.fontSizeSm }}>{h.errorsLast24h}{h.errorsLast24h ? " →" : ""}</button> : "-"}
           </Line>

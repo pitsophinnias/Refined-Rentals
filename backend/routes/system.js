@@ -8,12 +8,19 @@
  * POST /api/system/errors/resolve                 — mark error rows resolved { ids: [..] }
  * GET  /api/system/login-activity                 — recent logins, failures, last login per user
  * POST /api/system/users/:id/logout-everywhere    — end every session for that user
+ * GET  /api/system/controls                       — maintenance mode state
+ * PATCH /api/system/maintenance                   — turn maintenance on/off { enabled, message }
+ * GET  /api/system/backups                        — backup runs, files on disk, warnings
+ * POST /api/system/backups/run                    — start a backup now
+ * GET  /api/system/backups/files/:name            — download one backup file
  */
 
 const router      = require("express").Router();
 const fs          = require("fs");
 const path        = require("path");
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
+const { getMaintenance, setMaintenance } = require("../lib/systemSettings.js");
+const { BACKUP_DIR, KEEP_DAYS, FILE_RE, listBackupFiles } = require("../lib/backups.js");
 const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { getRole, isSysadminRole } = require("../lib/roles.js");
@@ -35,6 +42,7 @@ router.use(requireAuth, requireSysadmin);
 const SECURITY_ACTIONS = [
   "CREATE_USER", "DELETE_USER", "CHANGE_ROLE", "RESET_PASSWORD",
   "CHANGE_OWN_PASSWORD", "MAKE_SYSADMIN", "LOGOUT_EVERYWHERE",
+  "MAINTENANCE_ON", "MAINTENANCE_OFF", "BACKUP_DOWNLOADED",
 ];
 
 router.get("/overview", async (req, res) => {
@@ -145,6 +153,20 @@ router.get("/health", async (req, res) => {
   } catch { /* statfs unavailable */ }
   const uploadsBytes = await folderSize(UPLOADS_DIR);
 
+  let backup = { setUp: false, lastSuccessAt: null, lastStatus: null };
+  try {
+    const { rows } = await pool.query(
+      `SELECT (SELECT MAX(finished_at) FROM backup_runs WHERE status = 'success') AS last_success,
+              (SELECT status FROM backup_runs ORDER BY finished_at DESC LIMIT 1) AS last_status,
+              (SELECT COUNT(*)::int FROM backup_runs) AS runs`
+    );
+    backup = { setUp: rows[0].runs > 0, lastSuccessAt: rows[0].last_success, lastStatus: rows[0].last_status };
+  } catch (err) {
+    console.error("Health check backups error:", err);
+  }
+  let maintenance = { enabled: false };
+  try { maintenance = await getMaintenance(); } catch (err) { console.error("Health check maintenance error:", err); }
+
   let errorsLast24h = 0, failedLoginsLast24h = 0, emailRecipients = 0;
   try {
     const [e, f, n] = await Promise.all([
@@ -169,8 +191,15 @@ router.get("/health", async (req, res) => {
   if (!services.email.configured) warnings.push("Email isn't configured (RESEND_API_KEY missing), so quote notifications won't send.");
   else if (!services.email.sender) warnings.push("EMAIL_FROM isn't set, so emails use the test sender and may not reach customers.");
 
+  if (!backup.setUp) warnings.push("Automatic backups aren't set up yet.");
+  else if (backup.lastStatus === "failed") warnings.push("The most recent backup failed.");
+  else if (!backup.lastSuccessAt || Date.now() - new Date(backup.lastSuccessAt).getTime() > 26 * 3600 * 1000) warnings.push("No successful backup in the last 26 hours.");
+  if (maintenance.enabled) warnings.push("Maintenance mode is ON: customers see the maintenance screen.");
+
   const mem = process.memoryUsage();
   res.json({
+    backup,
+    maintenance: { enabled: maintenance.enabled },
     status: warnings.length === 0 ? "ok" : "warning",
     warnings,
     backend: {
@@ -266,6 +295,89 @@ router.post("/users/:id/logout-everywhere", async (req, res) => {
     console.error("Logout everywhere error:", err);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+/* ── System Controls: maintenance mode ───────────────────────── */
+router.get("/controls", async (req, res) => {
+  try {
+    res.json({ maintenance: await getMaintenance() });
+  } catch (err) {
+    console.error("System controls error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.patch("/maintenance", async (req, res) => {
+  const enabled = req.body?.enabled === true;
+  const message = String(req.body?.message || "").trim().replace(/\s+/g, " ");
+  if (!message) return res.status(400).json({ error: "A message for visitors is required." });
+  if (message.length > 300) return res.status(400).json({ error: "Keep the message under 300 characters." });
+  try {
+    await setMaintenance({ enabled, message, updatedBy: req.admin.email });
+    await audit(req, enabled ? "MAINTENANCE_ON" : "MAINTENANCE_OFF", null,
+      enabled ? `Maintenance mode turned ON: "${message}"` : "Maintenance mode turned OFF");
+    res.json({ maintenance: await getMaintenance() });
+  } catch (err) {
+    console.error("Maintenance update error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ── Backups ─────────────────────────────────────────────────── */
+let manualRunStartedAt = 0;
+
+router.get("/backups", async (req, res) => {
+  try {
+    const [{ rows: runs }, files] = await Promise.all([
+      pool.query(`SELECT * FROM backup_runs ORDER BY finished_at DESC LIMIT 30`),
+      listBackupFiles(),
+    ]);
+    const lastSuccess = runs.find(r => r.status === "success");
+    const lastSuccessAt = lastSuccess?.finished_at || null;
+    let warning = null;
+    if (runs.length && runs[0].status === "failed") warning = "The most recent backup failed.";
+    else if (runs.length && (!lastSuccessAt || Date.now() - new Date(lastSuccessAt).getTime() > 26 * 3600 * 1000)) warning = "No successful backup in the last 26 hours.";
+    res.json({
+      setUp: runs.length > 0,
+      location: BACKUP_DIR,
+      keepDays: KEEP_DAYS,
+      lastSuccessAt,
+      warning,
+      running: Date.now() - manualRunStartedAt < 10 * 60 * 1000 && fs.existsSync(path.join(BACKUP_DIR, ".backup.lock")),
+      runs,
+      files,
+    });
+  } catch (err) {
+    console.error("Backups list error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/backups/run", async (req, res) => {
+  if (fs.existsSync(path.join(BACKUP_DIR, ".backup.lock"))) {
+    return res.status(409).json({ error: "A backup is already running." });
+  }
+  try {
+    const child = spawn(process.execPath, [path.join(__dirname, "..", "scripts", "backup.js"), "--trigger=manual"], {
+      cwd: path.join(__dirname, ".."), detached: true, stdio: "ignore",
+    });
+    child.unref();
+    manualRunStartedAt = Date.now();
+    await audit(req, "BACKUP_STARTED", null, "Started a manual backup");
+    res.status(202).json({ message: "Backup started" });
+  } catch (err) {
+    console.error("Backup start error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/backups/files/:name", async (req, res) => {
+  const name = req.params.name;
+  if (!FILE_RE.test(name)) return res.status(400).json({ error: "Invalid file name" });
+  const full = path.join(BACKUP_DIR, name);
+  if (!fs.existsSync(full)) return res.status(404).json({ error: "Backup not found" });
+  await audit(req, "BACKUP_DOWNLOADED", null, `Downloaded ${name}`);
+  res.download(full, name);
 });
 
 module.exports = router;

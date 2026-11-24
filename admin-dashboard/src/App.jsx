@@ -27,6 +27,8 @@ import SysSettings    from "./sysadmin/pages/SysSettings.jsx";
 import SysHealth      from "./sysadmin/pages/SystemHealth.jsx";
 import SysErrors      from "./sysadmin/pages/Errors.jsx";
 import SysLogins      from "./sysadmin/pages/LoginActivity.jsx";
+import SysControls    from "./sysadmin/pages/SystemControls.jsx";
+import SysBackups     from "./sysadmin/pages/Backups.jsx";
 
 /* ── TopBar ── */
 const BUSINESS_PAGE_LABELS = { dashboard: "Dashboard", requests: "Quote Requests", settings: "Settings", gallery: "Gallery", announcements: "Announcements" };
@@ -317,9 +319,11 @@ function Shell() {
           {sysPage === "users"    && <SysUsers currentAdminId={adminId} />}
           {sysPage === "roles"    && <SysRoles />}
           {sysPage === "audit"    && <SysAuditLog />}
+          {sysPage === "controls" && <SysControls />}
           {sysPage === "health"   && <SysHealth setPage={setSysPage} />}
           {sysPage === "errors"   && <SysErrors />}
           {sysPage === "logins"   && <SysLogins currentAdminId={adminId} onSignedOutSelf={handleSignOut} />}
+          {sysPage === "backups"  && <SysBackups />}
           {sysPage === "settings" && <SysSettings adminEmail={adminEmail} />}
         </main>
       </div>

@@ -166,6 +166,20 @@ const SETTINGS_SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS error_log_created_idx ON error_log (created_at DESC);
 
+  -- One row per backup run (written by scripts/backup.js)
+  CREATE TABLE IF NOT EXISTS backup_runs (
+    id            SERIAL PRIMARY KEY,
+    started_at    TIMESTAMPTZ NOT NULL,
+    finished_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status        VARCHAR(10) NOT NULL,
+    triggered_by  VARCHAR(20),
+    db_file       VARCHAR(255),
+    db_bytes      BIGINT,
+    uploads_file  VARCHAR(255),
+    uploads_bytes BIGINT,
+    message       TEXT
+  );
+
   -- Simple key/value store for admin-editable business settings
   -- (e.g. whatsapp_number). Read with a fallback default where used.
   CREATE TABLE IF NOT EXISTS settings (

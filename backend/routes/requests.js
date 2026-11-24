@@ -14,6 +14,7 @@ const { pool }    = require("../db.js");
 const requireAuth = require("../middleware/auth.js");
 const { cleanField, isValidDate, cleanServices } = require("../lib/validate.js");
 const { can } = require("../lib/roles.js");
+const { getMaintenance } = require("../lib/systemSettings.js");
 const { sendNewRequestNotification, sendQuoteToCustomer } = require("../lib/email.js");
 
 /* ── Rate limiting — quote submission (public, unauthenticated) ─ */
@@ -65,7 +66,19 @@ function pick(obj, keys) {
 }
 
 /* ── POST /api/requests — customer submits quote ─────────────── */
-router.post("/", quoteLimiter, async (req, res) => {
+router.post("/", quoteLimiter, async (req, res, next) => {
+  // Maintenance mode (System Admin → System Controls) turns new website
+  // quote requests away. Manual entries by staff still work.
+  try {
+    const m = await getMaintenance();
+    if (m.enabled) return res.status(503).json({ error: m.message });
+  } catch (err) {
+    console.error("Maintenance check error:", err); // fail open
+  }
+  return createWebsiteRequest(req, res, next);
+});
+
+async function createWebsiteRequest(req, res) {
   const {
     name, phone, email, event, location,
     duration, date, startDate, endDate,
@@ -142,7 +155,7 @@ router.post("/", quoteLimiter, async (req, res) => {
     console.error("Create request error:", err);
     res.status(500).json({ error: "Server error" });
   }
-});
+}
 
 /* ── POST /api/requests/manual — admin creates on behalf of a client
    who contacted via WhatsApp/call (not the customer-facing form) ──── */

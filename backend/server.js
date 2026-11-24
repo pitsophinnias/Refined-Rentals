@@ -72,7 +72,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   message:         { error: "Too many requests, please try again later." },
-  skip: (req) => req.path === "/api/auth/me" || req.path === "/api/health",
+  skip: (req) => req.path === "/api/auth/me" || req.path === "/api/health" || req.path === "/api/status",
 });
 app.use(globalLimiter);
 
@@ -97,6 +97,7 @@ app.use("/uploads", (req, res, next) => {
 }, express.static(path.join(__dirname, "uploads")));
 
 /* ── Routes ──────────────────────────────────────────────────── */
+app.use("/api/status",        require("./routes/status.js"));
 app.use("/api/auth",          require("./routes/auth.js"));
 app.use("/api/requests",      require("./routes/requests.js"));
 app.use("/api/gallery",       require("./routes/gallery.js"));
